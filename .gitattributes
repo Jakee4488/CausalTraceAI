@@ -1,0 +1,11 @@
+# Shell scripts must keep LF endings even on a Windows checkout with
+# core.autocrlf=true. docker/local-entrypoint.sh is bind-mounted straight into
+# the Linux proxy container, where a CRLF `set -e` fails as
+# "set: Illegal option -" and the container restart-loops before uvicorn ever
+# starts. deploy_to_gcp.sh runs in Cloud Shell / CI for the same reason.
+*.sh text eol=lf
+
+# Same story for anything else executed inside a container image.
+Dockerfile* text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

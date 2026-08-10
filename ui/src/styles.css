@@ -1,0 +1,2674 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CausalTraceAI — neon-dark design system
+   Tokens on :root (dark default); html[data-theme="light"] overrides.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --surface-0: #0a0c12;
+    --surface-1: #10131c;
+    --surface-2: #161a26;
+    --surface-3: #1b2030;
+    --text-1: #e9edf7;
+    --text-2: #98a2b8;
+    /* --text-3 carries the entire quantitative layer: axis ticks, elapsed
+       times, step counters, p-values, the graph key. At #5c6478 all of it sat
+       between 2.74:1 and 3.30:1 — the numbers were the least readable text in
+       a numbers product. This clears 4.5:1 on every surface token below
+       (6.00:1 on surface-0, 4.97:1 on surface-3). */
+    --text-3: #858fa1;
+    --cyan: #22d3ee;
+    /* Cyan as *text*. Identical in dark, darkened in light where the mark
+       colour only reaches 3.1:1 on the badge grounds it is used on. */
+    --cyan-text: #22d3ee;
+    --violet: #8b5cf6;
+    /* Edge bands. Single source of truth for the canvas *and* the legend —
+       graph.ts no longer writes colour inline, so these apply in both themes. */
+    --edge-critical: #a78bfa;
+    --edge-firm: #2dd4bf;
+    --edge-soft: #7b8798;
+    --grad: linear-gradient(135deg, var(--cyan), var(--violet));
+    --glass-bg: rgba(255, 255, 255, 0.035);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --user-bubble-bg: linear-gradient(135deg, rgba(34, 211, 238, 0.13), rgba(139, 92, 246, 0.19));
+    --user-bubble-border: rgba(139, 92, 246, 0.38);
+    --glow-sm: 0 0 12px rgba(34, 211, 238, 0.25);
+    --glow-md: 0 0 24px rgba(139, 92, 246, 0.30);
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --err: #f87171;
+    --border: rgba(255, 255, 255, 0.09);
+    --code-bg: #0d1017;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --font-main: 'Inter', 'Google Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Cascadia Code', Consolas, ui-monospace, monospace;
+    --t-fast: 150ms;
+    --t-med: 300ms;
+    --t-slow: 600ms;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    /* overshoot on arrival */
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* list entry + ripple hop */
+    --stagger: 80ms;
+    --ambient-a: rgba(34, 211, 238, 0.05);
+    --ambient-b: rgba(139, 92, 246, 0.07);
+    color-scheme: dark;
+}
+
+html[data-theme="light"] {
+    --surface-0: #eef1f7;
+    --surface-1: #ffffff;
+    --surface-2: #f6f8fd;
+    --surface-3: #eceff8;
+    --text-1: #1b2233;
+    --text-2: #59637a;
+    /* 6.00:1 on white, 5.30:1 on surface-0, 4.83:1 on the tinted plot grounds
+       — the light theme was the worse of the two here, at 2.14–2.62:1. */
+    --text-3: #5b6472;
+    --cyan: #0894b3;
+    --cyan-text: #046b83;
+    --violet: #7c3aed;
+    --edge-critical: #6d28d9;
+    --edge-firm: #0d7a6c;
+    --edge-soft: #6b7686;
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-border: rgba(27, 34, 51, 0.10);
+    --user-bubble-bg: linear-gradient(135deg, rgba(8, 148, 179, 0.10), rgba(124, 58, 237, 0.12));
+    --user-bubble-border: rgba(124, 58, 237, 0.30);
+    --glow-sm: 0 2px 10px rgba(8, 148, 179, 0.14);
+    --glow-md: 0 4px 18px rgba(124, 58, 237, 0.16);
+    --border: rgba(27, 34, 51, 0.12);
+    --code-bg: #10131c;
+    --ambient-a: rgba(8, 148, 179, 0.05);
+    --ambient-b: rgba(124, 58, 237, 0.05);
+    /* Status colours need their own light steps: the dark ones sit at 1.7–2.8:1
+       on white, under the 3:1 floor for a non-text mark. These were picked with
+       the palette validator — all checks pass on #ffffff, and the one residual
+       WARN (amber at 2.94:1) is covered by the visible value labels every mark
+       carries. */
+    --ok: #047857;
+    --warn: #ca8a04;
+    --err: #be123c;
+    color-scheme: light;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────── */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: var(--font-main);
+    background: var(--surface-0);
+    color: var(--text-1);
+    overflow: hidden;
+    transition: background-color var(--t-med), color var(--t-med);
+}
+
+/* ambient glow field behind everything */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(600px 400px at 8% -5%, var(--ambient-a), transparent 65%),
+        radial-gradient(700px 500px at 100% 105%, var(--ambient-b), transparent 65%);
+    z-index: 0;
+}
+
+button {
+    font-family: inherit;
+}
+
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+}
+
+.app-container {
+    height: 100%;
+    display: flex;
+    position: relative;
+    z-index: 1;
+}
+
+/* ── Sidebar ───────────────────────────────────────────────────────────── */
+
+.sidebar {
+    width: 268px;
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface-1);
+    border-right: 1px solid var(--border);
+    transition: margin-left var(--t-med) ease, background-color var(--t-med);
+    overflow: hidden;
+}
+
+.sidebar.collapsed {
+    margin-left: -268px;
+}
+
+.brand {
+    padding: 18px 18px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-mark {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+}
+
+.brand-name {
+    font-size: 16.5px;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+}
+
+.brand-ai {
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* animated tracer line under the brand */
+.tracer-line {
+    height: 2px;
+    margin: 0 18px 12px;
+    border-radius: 2px;
+    background: linear-gradient(90deg,
+            transparent 0%, var(--cyan) 30%, var(--violet) 55%, transparent 80%);
+    background-size: 250% 100%;
+    animation: tracer-sweep 3.2s linear infinite;
+    opacity: 0.9;
+}
+
+@keyframes tracer-sweep {
+    from {
+        background-position: 125% 0;
+    }
+
+    to {
+        background-position: -125% 0;
+    }
+}
+
+.new-chat-btn {
+    margin: 4px 16px 14px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text-1);
+    background: var(--surface-2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: transform var(--t-fast), box-shadow var(--t-fast), border-color var(--t-fast);
+}
+
+.new-chat-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--glow-sm);
+    border-color: rgba(34, 211, 238, 0.45);
+}
+
+.new-chat-btn .plus {
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 6px;
+    background: var(--grad);
+    color: #fff;
+    font-size: 14px;
+    line-height: 1;
+}
+
+.history {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 10px 10px;
+}
+
+.history-title {
+    padding: 10px 10px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 10px;
+    font-size: 13px;
+    color: var(--text-2);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background-color var(--t-fast), color var(--t-fast);
+}
+
+.history-item::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--text-3);
+    transition: background var(--t-fast), box-shadow var(--t-fast);
+}
+
+.history-item:hover {
+    background: var(--surface-2);
+    color: var(--text-1);
+}
+
+.history-item:hover::before {
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+}
+
+.history-item.hint {
+    cursor: default;
+    color: var(--text-3);
+    white-space: normal;
+}
+
+.history-item.hint::before {
+    display: none;
+}
+
+.history-item.hint:hover {
+    background: none;
+    color: var(--text-3);
+}
+
+.sidebar-foot {
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+    font-size: 11.5px;
+    color: var(--text-3);
+    display: flex;
+    justify-content: space-between;
+}
+
+/* ── Chat column & header ──────────────────────────────────────────────── */
+
+/* The chat column is the only one of the three with no width asserted, so it
+   absorbed the remainder — including when the remainder went negative. A floor
+   here is what stops the pane starving it. */
+.chat-container {
+    flex: 1 1 auto;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+}
+
+/* Overlaid, the pane no longer consumes width, so the chat keeps the row. */
+.pane-overlay .chat-container {
+    min-width: 0;
+}
+
+.chat-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.menu-btn {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+    cursor: pointer;
+    font-size: 15px;
+    transition: color var(--t-fast), border-color var(--t-fast);
+}
+
+.menu-btn:hover {
+    color: var(--text-1);
+    border-color: var(--border);
+}
+
+.chat-title {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 8px var(--ok);
+    animation: dot-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes dot-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 4px var(--ok);
+    }
+
+    50% {
+        box-shadow: 0 0 11px var(--ok);
+    }
+}
+
+.token-badge {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 11.5px;
+    color: var(--cyan-text);
+    background: rgba(34, 211, 238, 0.10);
+    border: 1px solid rgba(34, 211, 238, 0.28);
+    padding: 3px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+
+html[data-theme="light"] .token-badge {
+    background: rgba(8, 148, 179, 0.08);
+}
+
+.header-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.model-select {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-1);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+    cursor: pointer;
+}
+
+.switch-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--text-2);
+    cursor: pointer;
+}
+
+.switch {
+    position: relative;
+    width: 38px;
+    height: 21px;
+    flex: 0 0 auto;
+    display: inline-block;
+}
+
+.switch input {
+    position: absolute;
+    opacity: 0;
+    inset: 0;
+    margin: 0;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.switch .track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: var(--surface-3);
+    border: 1px solid var(--border);
+    transition: background var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.switch .track::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    background: var(--text-2);
+    transition: transform var(--t-fast), background var(--t-fast);
+}
+
+.switch input:checked+.track {
+    background: var(--grad);
+    border-color: transparent;
+    box-shadow: var(--glow-sm);
+}
+
+.switch input:checked+.track::before {
+    background: #fff;
+    transform: translateX(17px);
+}
+
+.switch input:focus-visible+.track {
+    outline: 2px solid var(--cyan);
+    outline-offset: 2px;
+}
+
+.icon-btn {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+    cursor: pointer;
+    font-size: 15px;
+    transition: color var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.icon-btn:hover {
+    color: var(--text-1);
+    border-color: rgba(34, 211, 238, 0.45);
+    box-shadow: var(--glow-sm);
+}
+
+.signin-btn {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-1);
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background:
+        linear-gradient(var(--surface-2), var(--surface-2)) padding-box,
+        var(--grad) border-box;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: box-shadow var(--t-fast), transform var(--t-fast);
+}
+
+.signin-btn:hover {
+    box-shadow: var(--glow-md);
+}
+
+.signin-btn:active {
+    transform: translateY(1px);
+}
+
+/* ── Messages ──────────────────────────────────────────────────────────── */
+
+.messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 26px 20px 10px;
+    
+    scrollbar-color: var(--surface-3) transparent;
+}
+
+.messages::-webkit-scrollbar {
+    width: 8px;
+}
+
+.messages::-webkit-scrollbar-thumb {
+    background: var(--surface-3);
+    border-radius: 4px;
+}
+
+.messages-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.msg {
+    display: flex;
+    gap: 12px;
+    animation: msg-in var(--t-med) ease both;
+}
+
+@keyframes msg-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.msg.user {
+    justify-content: flex-end;
+}
+
+.avatar {
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--grad);
+    position: relative;
+    box-shadow: var(--glow-sm);
+}
+
+.avatar::after {
+    content: "";
+    position: absolute;
+    inset: 9px;
+    border-radius: 50%;
+    background: var(--surface-0);
+    opacity: 0.85;
+}
+
+.bubble {
+    max-width: 82%;
+    min-width: 0;
+    padding: 13px 17px;
+    font-size: 14px;
+    line-height: 1.62;
+    overflow-wrap: break-word;
+}
+
+.msg.ai .bubble {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 4px var(--radius-lg) var(--radius-lg) var(--radius-lg);
+}
+
+.msg.user .bubble {
+    background: var(--user-bubble-bg);
+    border: 1px solid var(--user-bubble-border);
+    border-radius: var(--radius-lg) 4px var(--radius-lg) var(--radius-lg);
+}
+
+.msg .bubble.error {
+    border-color: var(--err);
+    color: var(--err);
+}
+
+.bubble p {
+    margin: 0 0 10px;
+}
+
+.bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.bubble-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin: 9px 6px 0 0;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--text-2);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    border-radius: 999px;
+}
+
+/* markdown content inside AI bubbles */
+.md-content>*:first-child {
+    margin-top: 0;
+}
+
+.md-content>*:last-child {
+    margin-bottom: 0;
+}
+
+.md-content h1,
+.md-content h2,
+.md-content h3,
+.md-content h4,
+.md-content h5,
+.md-content h6 {
+    margin: 14px 0 8px;
+    line-height: 1.3;
+}
+
+.md-content h1 {
+    font-size: 1.25em;
+}
+
+.md-content h2 {
+    font-size: 1.15em;
+}
+
+.md-content h3 {
+    font-size: 1.05em;
+}
+
+.md-content ul,
+.md-content ol {
+    margin: 8px 0;
+    padding-left: 22px;
+}
+
+.md-content li {
+    margin: 3px 0;
+}
+
+.md-content a {
+    color: var(--cyan-text);
+}
+
+.md-content blockquote {
+    margin: 10px 0;
+    padding: 6px 14px;
+    border-left: 3px solid var(--violet);
+    color: var(--text-2);
+    background: var(--surface-2);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.md-content table {
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 13px;
+    display: block;
+    overflow: hidden;
+}
+
+.md-content th,
+.md-content td {
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+}
+
+.md-content th {
+    background: var(--surface-2);
+}
+
+/* Numeric columns, tagged by enhanceMarkdown(). Answers routinely carry effect
+   tables, and left-aligned magnitudes cannot be compared down a column. */
+.md-content th.md-num,
+.md-content td.md-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.md-content code {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+}
+
+.md-content :not(pre)>code {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 1px 6px;
+}
+
+.md-content pre {
+    margin: 10px 0;
+    padding: 12px 14px;
+    background: var(--code-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    line-height: 1.6;
+}
+
+.md-content pre code {
+    background: none;
+    padding: 0;
+    font-size: 12.5px;
+}
+
+.md-content img {
+    max-width: 100%;
+}
+
+.md-content hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 14px 0;
+}
+
+/* ── Causal panel ──────────────────────────────────────────────────────── */
+
+.causal-panel {
+    margin-top: 13px;
+    border: 1px solid var(--glass-border);
+    border-left: 3px solid var(--violet);
+    background: rgba(139, 92, 246, 0.05);
+    padding: 13px 15px;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    /* Anchor for the detail sheet and its backdrop. */
+    position: relative;
+}
+
+.causal-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 12.5px;
+    font-weight: 650;
+    margin-bottom: 9px;
+}
+
+.phase-badge {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ok);
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+    padding: 2px 8px;
+    border-radius: 999px;
+}
+
+/* ── Formal identification card (DoWhy estimand / effect) ─────────────── */
+
+.estimand-card {
+    margin: 0 0 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    background: rgba(139, 92, 246, 0.07);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.estimand-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11.5px;
+    font-weight: 650;
+    letter-spacing: 0.02em;
+}
+
+.estimand-chip {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--violet);
+    background: rgba(139, 92, 246, 0.14);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    padding: 1px 8px;
+    border-radius: 999px;
+}
+
+.estimand-chip.warn {
+    color: var(--warn);
+    background: rgba(251, 191, 36, 0.12);
+    border-color: rgba(251, 191, 36, 0.4);
+}
+
+.estimand-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 12px;
+}
+
+.estimand-label {
+    flex: 0 0 auto;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-2);
+}
+
+.adjust-pill {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--surface-1);
+    border: 1px solid var(--glass-border);
+}
+
+.adjust-pill.none {
+    font-family: inherit;
+    font-style: italic;
+    color: var(--text-2);
+}
+
+.effect-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.estimand-note {
+    font-size: 11px;
+    color: var(--text-2);
+}
+
+.refute-badge {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 999px;
+}
+
+.refute-badge.pass {
+    color: var(--ok);
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.refute-badge.fail {
+    color: var(--err);
+    background: rgba(248, 113, 113, 0.12);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+}
+
+/* Data-driven graph correction (causal discovery) verdict, in the estimand
+   card head. Mirrors .refute-badge sizing. */
+.graphfix-badge,
+.web-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 1px 8px;
+    border-radius: 999px;
+    cursor: default;
+}
+
+.graphfix-badge.consistent {
+    color: var(--ok);
+    background: rgba(52, 211, 153, 0.12);
+    border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.graphfix-badge.corrected {
+    color: var(--warn);
+    background: rgba(251, 191, 36, 0.12);
+    border: 1px solid rgba(251, 191, 36, 0.4);
+}
+
+.graphfix-badge.untestable {
+    color: var(--text-3);
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.32);
+}
+
+/* Web-retrieval status badge in the causal-panel head. */
+.web-badge.dataset {
+    color: var(--cyan-text);
+    background: rgba(34, 211, 238, 0.12);
+    border: 1px solid rgba(34, 211, 238, 0.35);
+}
+
+.web-badge.evidence {
+    color: var(--violet);
+    background: rgba(139, 92, 246, 0.14);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.web-badge.none {
+    color: var(--text-3);
+    background: rgba(148, 163, 184, 0.12);
+    border: 1px solid rgba(148, 163, 184, 0.32);
+}
+
+.causal-steps {
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--text-2);
+}
+
+.causal-steps li {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.step-tag {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    padding: 1px 7px;
+    border-radius: 5px;
+    color: var(--cyan-text);
+    background: rgba(34, 211, 238, 0.10);
+    border: 1px solid rgba(34, 211, 238, 0.25);
+}
+
+.step-tag.ok {
+    color: var(--ok);
+    background: rgba(52, 211, 153, 0.10);
+    border-color: rgba(52, 211, 153, 0.3);
+}
+
+.step-tag.fail {
+    color: var(--err);
+    background: rgba(248, 113, 113, 0.10);
+    border-color: rgba(248, 113, 113, 0.3);
+}
+
+.graph-card {
+    background: var(--surface-1);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    overflow: hidden;
+    animation: graph-reveal 500ms ease both;
+}
+
+@keyframes graph-reveal {
+    from {
+        opacity: 0;
+        transform: scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* NB: no bare `.causal-graph-container svg` rule here. React Flow renders its
+   edges into an absolutely-positioned <svg>, and the Mermaid-era rule that
+   used to live here (display:block; margin:0 auto; max-width:100%) collapsed
+   it to 0x0 — edges were in the DOM with correct geometry but clipped away. */
+
+.graph-legend {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-3);
+}
+
+.graph-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.lg-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.legend-divider {
+    color: var(--border);
+    margin: 0 4px;
+}
+
+/* The three link bands, matching the classes buildEdges() actually applies.
+   The previous key advertised a dotted-grey "low confidence" line the renderer
+   never produced, and called critical edges orange when the stylesheet drew
+   them violet. Both now read from --edge-* so key and canvas cannot drift. */
+.lg-line {
+    width: 24px;
+    height: 0;
+    display: inline-block;
+    vertical-align: middle;
+    border-bottom: 2px solid transparent;
+}
+
+.lg-line.critical {
+    border-bottom: 2px dashed var(--edge-critical);
+}
+
+.lg-line.firm {
+    border-bottom: 2px solid var(--edge-firm);
+}
+
+.lg-line.soft {
+    border-bottom: 2px dashed var(--edge-soft);
+    opacity: 0.85;
+}
+
+.legend-group-label {
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    font-size: 9.5px;
+    color: var(--text-3);
+}
+
+.lg-dot.done {
+    background: var(--ok);
+}
+
+.lg-dot.pending {
+    background: transparent;
+    box-shadow: inset 0 0 0 1.5px var(--text-3);
+}
+
+.lg-dot.active {
+    background: var(--grad);
+}
+
+.lg-dot.failed {
+    background: var(--err);
+}
+
+/* ── Typing indicator ──────────────────────────────────────────────────── */
+
+.typing {
+    display: inline-flex;
+    gap: 5px;
+    padding: 4px 0;
+}
+
+.typing i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--grad);
+    animation: typing-pulse 1.2s ease-in-out infinite;
+}
+
+.typing i:nth-child(2) {
+    animation-delay: 0.18s;
+}
+
+.typing i:nth-child(3) {
+    animation-delay: 0.36s;
+}
+
+@keyframes typing-pulse {
+
+    0%,
+    70%,
+    100% {
+        opacity: 0.35;
+        transform: translateY(0);
+    }
+
+    35% {
+        opacity: 1;
+        transform: translateY(-4px);
+    }
+}
+
+/* ── Composer ──────────────────────────────────────────────────────────── */
+
+.composer {
+    flex: 0 0 auto;
+    padding: 8px 20px 14px;
+}
+
+.composer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.chips-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    padding: 0 4px 8px;
+}
+
+.chips-row:empty {
+    padding: 0;
+}
+
+.attach-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--text-1);
+    background: var(--surface-2);
+    border: 1px solid rgba(34, 211, 238, 0.35);
+    padding: 5px 7px 5px 11px;
+    border-radius: 999px;
+    animation: msg-in var(--t-fast) ease both;
+}
+
+.attach-chip .size {
+    color: var(--text-3);
+}
+
+.attach-chip.uploading {
+    opacity: 0.6;
+    border-style: dashed;
+}
+
+.attach-chip.error {
+    border-color: var(--err);
+    color: var(--err);
+}
+
+.chip-x {
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-3);
+    color: var(--text-2);
+    font-size: 11px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.chip-x:hover {
+    background: var(--err);
+    color: #fff;
+}
+
+.input-pill {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 9px 10px 9px 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 26px;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.input-pill:focus-within {
+    border-color: rgba(34, 211, 238, 0.55);
+    box-shadow: var(--glow-sm);
+}
+
+.attach-btn {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border: 1px dashed var(--text-3);
+    border-radius: 50%;
+    background: none;
+    color: var(--text-2);
+    font-size: 17px;
+    cursor: pointer;
+    transition: color var(--t-fast), border-color var(--t-fast), transform var(--t-fast);
+}
+
+.attach-btn:hover {
+    color: var(--cyan);
+    border-color: var(--cyan);
+    transform: scale(1.06);
+}
+
+.input-pill textarea {
+    flex: 1;
+    resize: none;
+    border: none;
+    outline: none;
+    background: none;
+    color: var(--text-1);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    max-height: 140px;
+    padding: 8px 0;
+}
+
+.input-pill textarea::placeholder {
+    color: var(--text-3);
+}
+
+.send-btn {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border: none;
+    border-radius: 50%;
+    background: var(--grad);
+    color: #fff;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform var(--t-fast), box-shadow var(--t-fast), opacity var(--t-fast);
+}
+
+.send-btn:hover {
+    transform: translateY(-1px) scale(1.05);
+    box-shadow: var(--glow-md);
+}
+
+.send-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+}
+
+.disclaimer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-3);
+    padding-top: 8px;
+}
+
+/* ── Drag-drop overlay ─────────────────────────────────────────────────── */
+
+.drop-overlay {
+    position: absolute;
+    inset: 10px;
+    z-index: 10;
+    display: none;
+    place-items: center;
+    border: 2px dashed rgba(34, 211, 238, 0.6);
+    border-radius: var(--radius-lg);
+    background: color-mix(in srgb, var(--surface-0) 72%, transparent);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    pointer-events: none;
+}
+
+.drop-overlay.show {
+    display: grid;
+}
+
+.drop-inner {
+    text-align: center;
+    animation: msg-in var(--t-med) ease both;
+}
+
+.drop-icon {
+    width: 58px;
+    height: 58px;
+    margin: 0 auto 14px;
+    display: grid;
+    place-items: center;
+    border-radius: 18px;
+    background: var(--grad);
+    color: #fff;
+    font-size: 26px;
+    box-shadow: var(--glow-md);
+}
+
+.drop-inner h2 {
+    margin: 0 0 6px;
+    font-size: 18px;
+    font-weight: 650;
+}
+
+.drop-inner p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--text-2);
+    font-family: var(--font-mono);
+}
+
+/* ── Responsive & motion ───────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+    .sidebar {
+        position: absolute;
+        z-index: 8;
+        height: 100%;
+        box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Keep the header (and its sidebar-toggle button) above the sidebar
+       overlay, and allow wrapping to prevent narrow-screen overflow. */
+    .chat-header {
+        position: relative;
+        z-index: 9;
+        flex-wrap: wrap;
+        row-gap: 8px;
+        padding: 10px 12px;
+    }
+
+    .switch-group .sw-label {
+        display: none;
+    }
+
+    .header-controls {
+        gap: 8px;
+        width: 100%;
+        margin-left: 0;
+        justify-content: flex-start;
+    }
+
+    .bubble {
+        max-width: 92%;
+    }
+
+    .composer {
+        padding: 8px 12px 14px;
+    }
+
+    .input-pill {
+        flex-wrap: wrap;
+        border-radius: 16px;
+    }
+
+    .input-pill textarea {
+        min-width: 100%;
+        order: -1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    /* The rule above only stops motion — it does not move anything to its end
+       state. Any animation that encodes its result in a transform would sit at
+       its *start* value and render invisible, so assert the end states here.
+       Status colours are untouched: the timeline stays fully readable. */
+    .stage-row.done .stage-rail::after,
+    .stage-row.failed .stage-rail::after {
+        transform: scaleX(1) !important;
+    }
+
+    .stage-steps li {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    .stage-row.active .stage-dot {
+        animation: none !important;
+    }
+
+    /* Status colours still apply; only the motion goes. Zeroing the ripple
+       delay matters because it is a calc() on --hop, which the blanket
+       transition-duration override above does not touch. */
+    .dag-node {
+        transition-delay: 0ms !important;
+    }
+
+    .dag-node.active {
+        animation: none !important;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Workflow timeline — the live loading state for a causal turn.
+   Motion spec: transform/opacity/box-shadow only, so nothing here triggers
+   layout. See the reduced-motion block above for the end-state assertions.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.workflow-timeline {
+    margin-top: 4px;
+}
+
+/* Vertical. The horizontal form pinned all eight stages to 58px columns inside
+   a ~379px pane: every label ellipsised, and the last three — Execute plan,
+   Replan and Synthesize — sat outside the clip box with the scrollbar
+   suppressed, so the stage that wrote the answer was unreachable. */
+.stage-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stage-row {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 0 0 10px;
+}
+
+.stage-row:last-child {
+    padding-bottom: 0;
+}
+
+/* Vertical connector rail between dots */
+.stage-row:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 12px;
+    bottom: 0;
+    width: 2px;
+    background: var(--surface-3);
+    border-radius: 1px;
+    z-index: 0;
+}
+
+/* ...and the gradient fill that grows down it */
+.stage-row:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 5px;
+    top: 12px;
+    bottom: 0;
+    width: 2px;
+    border-radius: 1px;
+    background: var(--grad);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform var(--t-med) var(--ease-out);
+    z-index: 0;
+}
+
+.stage-row.done::after,
+.stage-row.failed::after {
+    transform: scaleY(1);
+}
+
+.stage-dot {
+    flex: none;
+    width: 12px;
+    height: 12px;
+    margin-top: 3px;
+    border-radius: 50%;
+    border: 2px solid var(--text-3);
+    background: var(--surface-1);
+    transition: transform var(--t-med) var(--ease-spring),
+        background var(--t-med) ease,
+        border-color var(--t-med) ease,
+        box-shadow var(--t-med) ease;
+    z-index: 1;
+}
+
+.stage-row.active .stage-dot {
+    border-color: transparent;
+    background: var(--grad);
+    transform: scale(1.15);
+    /* Deliberately echoes .typing's pulse so it reads as the same family. */
+    animation: stage-glow 1.6s ease-in-out infinite;
+}
+
+.stage-row.done .stage-dot {
+    border-color: var(--ok);
+    background: var(--ok);
+    transform: scale(1);
+}
+
+.stage-row.failed .stage-dot {
+    border-color: var(--err);
+    background: var(--err);
+    animation: stage-shake 300ms ease;
+}
+
+.stage-row.skipped .stage-dot {
+    border-style: dashed;
+    border-color: var(--text-3);
+    background: transparent;
+}
+
+@keyframes stage-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.45); }
+    50%      { box-shadow: 0 0 0 6px rgba(34, 211, 238, 0); }
+}
+
+@keyframes stage-shake {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-3px); }
+    75%      { transform: translateX(3px); }
+}
+
+.stage-body {
+    flex: 1;
+    min-width: 0;
+    width: 100%;
+}
+
+.stage-head {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 7px;
+    width: 100%;
+    padding: 0;
+    text-align: left;
+    background: none;
+    border: none;
+    font: inherit;
+    color: inherit;
+    border-radius: var(--radius-sm);
+}
+
+/* Only rows with recorded steps are buttons; the rest must not look clickable. */
+button.stage-head {
+    cursor: pointer;
+}
+
+button.stage-head:hover .stage-label {
+    color: var(--text-1);
+}
+
+.stage-caret {
+    flex: 0 0 9px;
+    font-size: 9px;
+    line-height: 1.6;
+    color: var(--text-3);
+}
+
+.stage-label {
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--text-2);
+    transition: color var(--t-med) ease;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.stage-row.active .stage-label {
+    color: var(--text-1);
+    font-weight: 600;
+}
+
+.stage-row.done .stage-label {
+    color: var(--text-2);
+}
+
+.stage-row.skipped .stage-label {
+    color: var(--text-3);
+    opacity: 0.55;
+}
+
+.stage-counter,
+.stage-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-3);
+}
+
+.stage-counter {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--surface-3);
+}
+
+.stage-time {
+    /* Pushed to the trailing edge so durations form a readable column. */
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Trace lines for the expanded stage — in place, rather than in a full-height
+   modal that rendered a single string into 1200px of empty panel. */
+.stage-steps {
+    list-style: none;
+    margin: 6px 0 2px 4px;
+    padding: 0 0 0 9px;
+    border-left: 1px solid var(--border);
+}
+
+.stage-steps li {
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--text-2);
+    padding: 2px 0;
+    animation: step-in var(--t-fast) var(--ease-out) both;
+}
+
+@keyframes step-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Collapsed summary strip shown on a finished turn, so replayed history is not
+   dominated by a nine-row timeline. */
+.timeline-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    margin-top: 4px;
+    font: inherit;
+    font-size: 12px;
+    color: var(--text-2);
+    background: var(--surface-2);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--t-fast) ease;
+}
+
+.timeline-summary:hover {
+    background: var(--surface-3);
+}
+
+.timeline-summary .chev {
+    margin-left: auto;
+    color: var(--text-3);
+    transition: transform var(--t-fast) var(--ease-out);
+}
+
+.timeline-summary[aria-expanded="true"] .chev {
+    transform: rotate(90deg);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Causal DAG (React Flow) — nodes animate in place as the executor advances.
+   Positions never change after layout, so everything here is transform /
+   colour only. See lib/graph.ts for the rule that keeps it that way.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.causal-graph-container .react-flow {
+    background: transparent;
+}
+
+.causal-graph-container .react-flow__attribution {
+    background: transparent;
+    font-size: 9px;
+}
+
+.causal-graph-container .react-flow__attribution a {
+    color: var(--text-3);
+}
+
+.causal-graph-container .react-flow__handle {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.dag-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    width: 176px;
+    min-height: 52px;
+    padding: 6px 10px;
+    border-radius: var(--radius-sm);
+    border: 1.5px solid var(--text-3);
+    background: var(--surface-3);
+    color: var(--text-1);
+    font-size: 12.5px;
+    font-weight: 500;
+    text-align: center;
+    /* Ripple: a node invalidated N hops downstream of the failure changes
+       that many stagger-steps later, so the failure visibly propagates. */
+    transition:
+        transform var(--t-med) var(--ease-spring),
+        background var(--t-med) ease,
+        border-color var(--t-med) ease,
+        box-shadow var(--t-med) ease;
+    transition-delay: calc(var(--hop, 0) * var(--stagger));
+}
+
+/* Role, not status, is what a reader reasons with: a confounder is a different
+   object from a mediator. It used to live only in a title attribute. */
+/* Full-strength ink: the node fill is a status tint, and against it --text-2
+   lands at 4.2:1 — under the floor for 8.5px type. Size and tracking carry the
+   hierarchy here, not a lighter colour. */
+.dag-node-kind {
+    font-size: 8.5px;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--text-1);
+    line-height: 1.1;
+}
+
+/* Colour is fully spent on status, so role gets a shape channel instead: a
+   confounder sits off the causal path, and a broken outline reads that way.
+   Tinting the role text per kind would have added three more contrast pairs
+   to maintain for no information the word itself doesn't already carry. */
+.dag-node.kind-confounder {
+    border-style: dashed;
+}
+
+/* Two lines before ellipsis. At one line "Ocean surface temperature" clipped at
+   168px, and label length is not something the UI gets to control. */
+.dag-node-label {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+    max-width: 100%;
+}
+
+.dag-node.pending {
+    opacity: 0.72;
+}
+
+.dag-node.active {
+    transform: scale(1.06);
+    border-color: var(--cyan);
+    background: color-mix(in srgb, var(--cyan) 18%, var(--surface-3));
+    box-shadow: var(--glow-sm);
+    animation: dag-pulse 1.6s ease-in-out infinite;
+}
+
+.dag-node.done {
+    border-color: var(--ok);
+    background: color-mix(in srgb, var(--ok) 16%, var(--surface-3));
+}
+
+.dag-node.failed {
+    border-color: var(--err);
+    background: color-mix(in srgb, var(--err) 20%, var(--surface-3));
+    animation: stage-shake 300ms ease;
+}
+
+.dag-node.invalidated,
+.dag-node.replanned {
+    border-color: var(--warn);
+    background: color-mix(in srgb, var(--warn) 18%, var(--surface-3));
+}
+
+/* Critical path: a persistent ring, deliberately static so it doesn't compete
+   with the marching edges. */
+.dag-node.critical {
+    box-shadow: 0 0 0 1.5px var(--violet);
+}
+
+.dag-node.active.critical {
+    box-shadow: 0 0 0 1.5px var(--violet), var(--glow-sm);
+}
+
+@keyframes dag-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.40); }
+    50%      { box-shadow: 0 0 0 8px rgba(34, 211, 238, 0); }
+}
+
+/* Edge colour lives here and only here. graph.ts used to write inline hex,
+   which both overrode these rules (leaving them dead) and made every edge
+   theme-blind — #94a3b8 labels landed at ~2.7:1 on the light ground. */
+.causal-graph-container .react-flow__edge-path {
+    stroke: var(--edge-firm);
+}
+
+.causal-graph-container .causal-edge.soft .react-flow__edge-path {
+    stroke: var(--edge-soft);
+    stroke-dasharray: 4 3;
+}
+
+.causal-graph-container .causal-edge.critical .react-flow__edge-path {
+    stroke: var(--edge-critical);
+}
+
+.causal-graph-container .react-flow__arrowhead polyline,
+.causal-graph-container .react-flow__arrowhead path {
+    stroke: var(--edge-firm);
+    fill: var(--edge-firm);
+}
+
+.causal-graph-container .causal-edge.soft .react-flow__arrowhead polyline,
+.causal-graph-container .causal-edge.soft .react-flow__arrowhead path {
+    stroke: var(--edge-soft);
+    fill: var(--edge-soft);
+}
+
+.causal-graph-container .causal-edge.critical .react-flow__arrowhead polyline,
+.causal-graph-container .causal-edge.critical .react-flow__arrowhead path {
+    stroke: var(--edge-critical);
+    fill: var(--edge-critical);
+}
+
+.causal-graph-container .react-flow__edge-text {
+    fill: var(--text-2);
+    font-size: 10px;
+}
+
+.causal-graph-container .causal-edge.critical .react-flow__edge-text {
+    fill: var(--edge-critical);
+    font-weight: 600;
+}
+
+.causal-graph-container .react-flow__edge-textbg {
+    fill: var(--surface-1);
+    fill-opacity: 0.92;
+}
+
+/* React Flow's own controls — the only zoom affordance now that the wheel is
+   left to the pane it sits in. */
+.causal-graph-container .react-flow__controls {
+    box-shadow: none;
+    gap: 2px;
+    display: flex;
+    flex-direction: column;
+}
+
+.causal-graph-container .react-flow__controls-button {
+    width: 22px;
+    height: 22px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    border-radius: 5px;
+    fill: var(--text-2);
+}
+
+.causal-graph-container .react-flow__controls-button:hover {
+    background: var(--surface-3);
+    fill: var(--text-1);
+}
+
+.pane-resizer:hover, .is-resizing .pane-resizer {
+    background: var(--border);
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Run provenance + answer citations.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Provenance: the id that joins this answer to its log line and trace. */
+.run-id-strip {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-1);
+    font-size: 10px;
+}
+
+.run-id-label {
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.run-id-strip code {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.export-run-btn {
+    position: absolute;
+    top: 13px;
+    right: 52px;
+    height: 28px;
+    padding: 0 10px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-2);
+    font-size: 10.5px;
+    cursor: pointer;
+    transition: color var(--t-fast), border-color var(--t-fast);
+}
+
+.export-run-btn:hover:not(:disabled) {
+    color: var(--text-1);
+    border-color: var(--cyan);
+}
+
+.export-run-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.ledger-truncated {
+    margin: 8px 0 0;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--warn);
+}
+
+.drawer-edge-from {
+    font-weight: 600;
+    color: var(--text-1);
+}
+
+/* Causal node citation.
+   A real button on the baseline. As a <sup> it was keyboard-unreachable, and
+   raising a multi-word label above the baseline broke the line rhythm of every
+   paragraph that carried one. */
+.node-citation {
+    display: inline;
+    font: inherit;
+    font-size: 0.86em;
+    font-weight: 500;
+    color: var(--cyan-text);
+    background: none;
+    border: none;
+    border-bottom: 1px dotted currentColor;
+    padding: 0 1px;
+    margin: 0 1px;
+    cursor: pointer;
+    /* Inline so it wraps with the sentence rather than forcing an orphan. */
+    white-space: normal;
+    transition: background var(--t-fast) ease, color var(--t-fast) ease;
+}
+
+.node-citation::before {
+    content: "⚯\00a0";
+    font-size: 0.9em;
+}
+
+.node-citation:hover,
+.node-citation:focus-visible {
+    color: var(--text-1);
+    background: color-mix(in srgb, var(--cyan) 16%, transparent);
+    border-radius: 3px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Access gate — login / approval / quota modal, and the profile menu.
+   All colour comes from the existing tokens, so light and dark work for free.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.access-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(4, 6, 12, 0.72);
+    backdrop-filter: blur(3px);
+    animation: fade-in var(--t-med) var(--ease-out);
+}
+
+.access-modal {
+    position: fixed;
+    z-index: 61;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+    padding: 28px;
+    background: var(--surface-1);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), var(--glow-md);
+    animation: access-in var(--t-med) var(--ease-spring);
+}
+
+.access-modal:focus {
+    outline: none;
+}
+
+@keyframes access-in {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -46%) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.access-close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    font-size: 19px;
+    line-height: 1;
+    color: var(--text-3);
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: color var(--t-fast), background var(--t-fast);
+}
+
+.access-close:hover {
+    color: var(--text-1);
+    background: var(--glass-bg);
+}
+
+.access-title {
+    margin: 0 0 10px;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+.access-lede {
+    margin: 0 0 18px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text-2);
+}
+
+.access-lede strong {
+    color: var(--text-1);
+    font-weight: 600;
+}
+
+.access-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-2);
+}
+
+.access-optional {
+    font-weight: 400;
+    color: var(--text-3);
+}
+
+.access-input {
+    width: 100%;
+    padding: 11px 13px;
+    margin-bottom: 14px;
+    font: inherit;
+    font-size: 14px;
+    color: var(--text-1);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.access-input:focus {
+    outline: none;
+    border-color: var(--cyan);
+    box-shadow: var(--glow-sm);
+}
+
+.access-textarea {
+    resize: vertical;
+    min-height: 72px;
+    line-height: 1.5;
+}
+
+.access-primary {
+    width: 100%;
+    padding: 11px 18px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: #06121a;
+    background: var(--grad);
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: box-shadow var(--t-fast), transform var(--t-fast), opacity var(--t-fast);
+}
+
+.access-primary:hover:not(:disabled) {
+    box-shadow: var(--glow-md);
+}
+
+.access-primary:active:not(:disabled) {
+    transform: translateY(1px);
+}
+
+.access-primary:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.access-secondary {
+    padding: 8px 14px;
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-2);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color var(--t-fast), border-color var(--t-fast);
+}
+
+.access-secondary:hover {
+    color: var(--text-1);
+    border-color: var(--cyan);
+}
+
+.access-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.access-error {
+    margin: 12px 0 0;
+    font-size: 12.5px;
+    color: var(--err);
+}
+
+/* Secondary guidance under the resend control — quieter than the lede, and
+   not an error, so it must not read as one. */
+.access-hint {
+    margin: 12px 0 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-3);
+}
+
+.access-privacy {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-3);
+}
+
+.access-privacy summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--text-2);
+    list-style: none;
+}
+
+.access-privacy summary::-webkit-details-marker {
+    display: none;
+}
+
+.access-privacy summary::before {
+    content: "\25B8  ";
+    color: var(--cyan);
+}
+
+.access-privacy[open] summary::before {
+    content: "\25BE  ";
+}
+
+.access-privacy p {
+    margin: 12px 0 0;
+}
+
+.access-privacy strong {
+    color: var(--text-2);
+}
+
+.access-privacy a {
+    color: var(--cyan);
+}
+
+/* ── Usage bar (shared by the modal and the profile menu) ───────────────── */
+
+.usage-bar {
+    height: 6px;
+    margin-bottom: 16px;
+    background: var(--surface-3);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.usage-bar-fill {
+    height: 100%;
+    background: var(--grad);
+    border-radius: 999px;
+    transition: width var(--t-med) var(--ease-out);
+}
+
+/* ── Profile menu ──────────────────────────────────────────────────────── */
+
+.profile-wrap {
+    position: relative;
+}
+
+.profile-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px 4px 4px;
+    font: inherit;
+    font-size: 12.5px;
+    color: var(--text-1);
+    background: var(--glass-bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+
+.profile-btn:hover {
+    border-color: var(--cyan);
+    box-shadow: var(--glow-sm);
+}
+
+.profile-avatar {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #06121a;
+    background: var(--grad);
+    border-radius: 50%;
+}
+
+.profile-email {
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.profile-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 50;
+    width: 260px;
+    padding: 8px;
+    background: var(--surface-1);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+    animation: fade-in var(--t-fast) var(--ease-out);
+}
+
+.profile-header {
+    padding: 8px 10px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text-1);
+    word-break: break-all;
+}
+
+.profile-usage {
+    padding: 10px;
+    margin-bottom: 4px;
+    background: var(--surface-2);
+    border-radius: var(--radius-sm);
+}
+
+.profile-usage-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: var(--text-2);
+}
+
+.profile-usage-row strong {
+    font-size: 14px;
+    color: var(--text-1);
+}
+
+.profile-usage .usage-bar {
+    margin-bottom: 6px;
+}
+
+.profile-usage-sub {
+    font-size: 11px;
+    color: var(--text-3);
+}
+
+.profile-item {
+    display: block;
+    width: 100%;
+    padding: 9px 10px;
+    text-align: left;
+    font: inherit;
+    font-size: 13px;
+    color: var(--text-2);
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--t-fast), color var(--t-fast);
+}
+
+.profile-item:hover {
+    background: var(--glass-bg);
+    color: var(--text-1);
+}
+
+.profile-item.danger:hover {
+    color: var(--err);
+}
+
+.profile-note {
+    padding: 9px 10px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--warn);
+}
+
+.profile-footer {
+    padding: 10px;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-3);
+}
+
+/* ── Locked composer ───────────────────────────────────────────────────── */
+
+.input-pill.locked {
+    opacity: 0.55;
+    cursor: pointer;
+}
+
+.input-pill.locked #chat-input {
+    cursor: pointer;
+}
+
+.history-retention {
+    margin-top: 10px;
+    padding: 0 4px;
+    font-size: 10.5px;
+    line-height: 1.5;
+    color: var(--text-3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Decision card — what the engine computed.
+
+   Three sub-views (policy comparison, intervention contrast, posteriors) over
+   one plot grid: label / track / value. Marks carry emphasis; every value is
+   directly labelled, so nothing is gated behind hover, and the recommended
+   action is flagged in words as well as colour.
+
+   Deliberately no categorical palette: the actions are alternatives being
+   ranked, not independent series, so one is emphasised and the rest recede.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.decision-card {
+    margin: 0 20px 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    background: var(--glass-bg);
+}
+
+.decision-card-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.decision-card-title {
+    font-size: 12px;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-2);
+}
+
+.decision-kind {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-3);
+    padding: 2px 7px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+
+/* The headline answer. A hero number, not a chart: "which action" is one fact
+   and a plot of one fact is decoration. */
+.decision-hero {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.decision-hero-label {
+    font-size: 10.5px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    flex: 0 0 100%;
+}
+
+.decision-hero-value {
+    font-size: 20px;
+    font-weight: 650;
+    color: var(--text-1);
+    line-height: 1.2;
+}
+
+.decision-hero-value.effect {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.decision-hero-value.effect.up { color: var(--ok); }
+.decision-hero-value.effect.down { color: var(--warn); }
+
+.decision-hero-utility {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-2);
+}
+
+.decision-chart {
+    display: grid;
+    grid-template-columns: minmax(96px, 32%) 1fr auto;
+    align-items: center;
+    column-gap: 8px;
+    margin-top: 10px;
+}
+
+.decision-caption {
+    grid-column: 1 / -1;
+    font-size: 10.5px;
+    line-height: 1.45;
+    color: var(--text-3);
+    margin-bottom: 6px;
+}
+
+/* Shared plot grid, previously owned by the effect chart. */
+.plot-gutter {
+    font-size: 11px;
+    color: var(--text-3);
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.plot-meta {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+.plot-track {
+    position: relative;
+    height: 24px;
+}
+
+.action-name.best {
+    color: var(--text-1);
+    font-weight: 600;
+}
+
+/* The interval is on the MEAN — estimation precision, not the spread of U. */
+.action-whisker {
+    position: absolute;
+    top: 50%;
+    height: 2px;
+    margin-top: -1px;
+    border-radius: 1px;
+    background: var(--text-3);
+    opacity: 0.5;
+}
+
+.action-whisker.best {
+    background: var(--ok);
+    opacity: 0.55;
+}
+
+.action-point {
+    position: absolute;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    margin: -4.5px 0 0 -4.5px;
+    border-radius: 50%;
+    background: var(--text-3);
+    /* 2px surface ring so a point overlapping its whisker stays legible. */
+    box-shadow: 0 0 0 2px var(--surface-2, var(--code-bg));
+}
+
+.action-point.best {
+    background: var(--ok);
+}
+
+.action-value {
+    color: var(--text-2);
+}
+
+.prob-label {
+    font-size: 10px;
+    color: var(--text-3);
+}
+
+.prob-track {
+    position: relative;
+    height: 14px;
+    border-radius: 3px;
+    background: color-mix(in srgb, var(--border) 60%, transparent);
+    overflow: hidden;
+}
+
+/* 4px rounded data-end anchored to the baseline; square where it meets zero. */
+.prob-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 0 4px 4px 0;
+    background: var(--edge-soft);
+    min-width: 2px;
+}
+
+.prob-fill.best {
+    background: var(--ok);
+}
+
+.prob-value {
+    color: var(--text-2);
+}
+
+.decision-arm-choice {
+    font-size: 11px;
+    color: var(--text-2);
+}
+
+.posterior-list {
+    margin: 10px 0 0;
+    display: grid;
+    gap: 6px;
+}
+
+.posterior-row {
+    display: grid;
+    grid-template-columns: minmax(110px, 34%) 1fr;
+    gap: 8px;
+    align-items: baseline;
+}
+
+.posterior-row dt {
+    font-size: 12px;
+    color: var(--text-1);
+}
+
+.posterior-row dd {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+}
+
+.posterior-dist {
+    font-size: 10.5px;
+    color: var(--text-3);
+}
+
+.posterior-moments {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+}
+
+/* Standing disclosure, not decoration — the whole design rests on it. */
+.decision-provenance {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    font-size: 10px;
+    letter-spacing: 0.02em;
+    color: var(--text-3);
+}

@@ -1,0 +1,28 @@
+# Runtime dependencies for the Cloud Run proxy image (Dockerfile.proxy).
+#
+# The proxy image ships proxy/ only — never src/ — so it must NOT install the
+# causal stack (torch, pyro-ppl and langgraph, comfortably over a gigabyte).
+# That code runs in the Vertex AI Agent Engine, deployed separately from src/
+# by deploy_agent.py.
+#
+# requirements.txt remains the agent manifest and carries the full set.
+# Anything imported at the top of proxy/*.py must appear here, or the container
+# fails at start rather than in CI — tests/test_main.py has a drift guard
+# (test_proxy_imports_are_covered_by_requirements) that catches this.
+
+fastapi>=0.115.0
+uvicorn>=0.34.0
+pydantic>=2.7.0
+
+# Outbound calls to the Agent Engine streamQuery endpoint
+httpx>=0.28.1
+
+# ADC credentials for the service-to-service call to Vertex AI
+google-auth>=2.29.0
+
+# Firebase ID-token verification + Firestore conversation history
+# (pulls google-cloud-firestore transitively)
+firebase-admin>=6.5.0
+
+# Multipart form parsing for POST /upload
+python-multipart>=0.0.9

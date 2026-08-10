@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CausalTraceAI: Bayesian Causal Decision Agent</title>
+    <script>
+        // Apply the saved theme before first paint to avoid a flash.
+        (function () {
+            var theme = null;
+            try { theme = localStorage.getItem("causaltrace-theme"); } catch (e) { /* storage blocked */ }
+            document.documentElement.setAttribute("data-theme", theme === "light" ? "light" : "dark");
+        })();
+    </script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+
+    <!-- API base for backend calls. Empty = same-origin.
+
+         Only the production custom domain is served through Firebase
+         Hosting, which caps a request at 60s — too short for a long causal
+         run — so only there does the UI need to bypass Hosting and call
+         Cloud Run directly. Every other origin (localhost, the E2E suite,
+         production's own Cloud Run URL accessed directly, and every
+         dev/staging preview from .github/workflows/deploy-{dev,staging}.yml)
+         already serves the UI and the API from the same origin — pointing
+         those at a hardcoded different origin instead sends the request
+         cross-origin, where CORS_ORIGINS on the target rejects it outright
+         (a preview's origin is never on that allow-list) and every API call
+         fails with an opaque "Failed to fetch". This used to be a plain
+         `!isLocal` check, which happened to work only because the sole
+         non-local deployment target was production itself; it broke the
+         moment a second Cloud Run service existed. -->
+    <script>
+        (function () {
+            var PRODUCTION_HOSTING_DOMAINS = ["tracerlensai.com", "www.tracerlensai.com"];
+            window.TRACERLENS_API_BASE = PRODUCTION_HOSTING_DOMAINS.indexOf(location.hostname) !== -1
+                ? "https://tracerlensai-app-gi2oexvg3a-nw.a.run.app"
+                : "";
+        })();
+    </script>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>

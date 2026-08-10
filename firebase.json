@@ -1,0 +1,19 @@
+{
+  "hosting": {
+    "public": "ui/dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "causaltraceai-app",
+          "region": "europe-west2"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,36 @@
+# Agent-side dependencies. These are what `deploy_agent.py` passes to
+# `agent_engines.create(requirements=...)`, so this file is the contract for the
+# managed Agent Engine environment — not a container image we build ourselves.
+# The proxy has its own set in requirements-proxy.txt and never ships src/.
+
+# ── Orchestration ────────────────────────────────────────────────────────────
+# The compiled StateGraph IS the agent: LanggraphAgent's runnable_builder hook
+# returns it directly, so no adapter layer sits in between.
+# Floors are the versions the notebook was actually validated against (the
+# `chanakya` WSL2 kernel) — langgraph 1.x, not the 0.2 line, so `.stream()`
+# defaults to "values" and the proxy must ask for "updates" explicitly.
+langgraph>=1.2.10
+langchain-core>=1.5.2
+
+# Gemini through Vertex (vertexai=True → ADC, not an API key). Same class the
+# notebook prototype used, which is also what LanggraphAgent's default model
+# builder constructs, so the model wiring stays on the supported path.
+langchain-google-genai>=4.3.2
+
+# ── The math ─────────────────────────────────────────────────────────────────
+# Pyro is used purely as a sampler here: every posterior is closed-form
+# conjugate, so there is no SVI, no gradients and no optimiser. Torch comes with
+# it. Install the CPU wheel — the default index resolves CUDA builds and adds
+# roughly a gigabyte for GPU support nothing in this project uses:
+#   pip install --index-url https://download.pytorch.org/whl/cpu torch
+pyro-ppl>=1.9
+torch>=2.2
+
+# ── Platform ─────────────────────────────────────────────────────────────────
+# 1.162 is the floor for vertexai.agent_engines.templates.langgraph.
+google-cloud-aiplatform[agent_engines,langchain]>=1.162.0
+google-auth>=2.29.0
+google-cloud-logging
+python-dotenv
+
+pydantic>=2.7.0

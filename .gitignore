@@ -1,0 +1,103 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environment variables
+.env
+.env.local
+
+# Virtual environments
+venv/
+venv2/
+env/
+.venv/
+.env/
+ENV/
+env.bak/
+venv.bak/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# GCP related (Never commit credentials)
+*credentials*.json
+*application_default_credentials.json
+*.pem
+*.key
+
+# Docker Compose developer overrides
+docker-compose.override.yml
+
+
+# Local test scripts (optional)
+test_vertex.py
+
+logs/
+# Container log captures (`docker compose logs > ...`). One of these was
+# committed once; it carried internal endpoint ids and 40KB of health checks.
+*_logs.txt
+
+data/
+app.db
+*.db
+
+# Firebase
+.firebase/
+terraform/firebase-debug.log
+
+test.ipynb
+.claude
+
+# Ad-hoc CSVs from experimenting with the engine. tests/fixtures/sales.csv is
+# the committed demo dataset and is exempt; anything else there is scratch.
+tests/fixtures/*.csv
+!tests/fixtures/sales.csv
+
+# React UI build artifacts (ui/dist is produced by `npm run build` and is what
+# both the proxy and Firebase Hosting serve).
+ui/node_modules/
+ui/dist/
+
+# Agent Engine deploy record, written by deploy_agent.py.
+deployment_metadata.json

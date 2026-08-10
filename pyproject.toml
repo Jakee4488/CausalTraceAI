@@ -1,0 +1,35 @@
+[project]
+name = "causaltraceai"
+version = "0.1.0"
+description = "CausalTraceAI - Bayesian causal decision agent on LangGraph + Vertex AI Agent Engine"
+requires-python = ">=3.11"
+
+# Mirrors requirements.txt, which stays the source of truth: deploy_agent.py
+# reads it to build the Agent Engine requirement list, and the managed runtime
+# resolves from that rather than from this file.
+dependencies = [
+    "langgraph>=1.2.10",
+    "langchain-core>=1.5.2",
+    "langchain-google-genai>=4.3.2",
+    "pyro-ppl>=1.9",
+    "torch>=2.2",
+    "google-cloud-aiplatform[agent_engines,langchain]>=1.162.0",
+    "google-auth>=2.29.0",
+    "google-cloud-logging",
+    "python-dotenv",
+    "pydantic>=2.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==7.4.0",
+    "pytest-asyncio==0.23.5",
+    "flake8>=7.0.0",
+    "httpx>=0.28.1",
+    "playwright>=1.44",
+    "pytest-playwright>=0.5",
+]
+
+[tool.uv]
+# App, not a library: install dependencies only, don't build src/ as a wheel.
+package = false
