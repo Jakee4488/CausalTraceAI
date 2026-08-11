@@ -29,11 +29,26 @@ SAMPLES = 512
 
 
 class StubMessage:
-    """An AIMessage as far as the pipeline is concerned: content + usage."""
+    """An AIMessage as far as the pipeline is concerned: content + usage.
+
+    ``text`` mirrors ``AIMessage.text``: Gemini 3 returns a list of content
+    blocks rather than a bare string, and the explain node reads the joined
+    text blocks so a thought signature never reaches the user.
+    """
 
     def __init__(self, content="Narrated answer.", usage=None):
         self.content = content
         self.usage_metadata = usage
+
+    @property
+    def text(self):
+        if isinstance(self.content, str):
+            return self.content
+        return "".join(
+            block.get("text", "")
+            for block in self.content
+            if isinstance(block, dict) and block.get("type") == "text"
+        )
 
 
 class StubStructuredModel:
@@ -72,12 +87,14 @@ class StubModel:
         interpret_usage=None,
         explain_usage=None,
         parsing_error=None,
+        explain_content="Narrated answer.",
     ):
         self._structured = StubStructuredModel(
             parsed, interpret_error, interpret_usage, parsing_error
         )
         self._explain_error = explain_error
         self._explain_usage = explain_usage
+        self._explain_content = explain_content
         self.explain_calls = 0
 
     def with_structured_output(self, schema, include_raw=False):
@@ -88,7 +105,7 @@ class StubModel:
         self.explain_calls += 1
         if self._explain_error:
             raise self._explain_error
-        return StubMessage("Narrated answer.", self._explain_usage)
+        return StubMessage(self._explain_content, self._explain_usage)
 
     @property
     def interpret_calls(self):
@@ -288,6 +305,29 @@ def test_narration_failure_still_returns_the_numbers(api):
     assert final[st.KEY_STATUS]["phase"] == "complete"
     assert "optimal_decision" in final[st.KEY_FINAL]
     assert "narration down" in final[st.KEY_FINAL]
+
+
+def test_block_content_is_flattened_to_text(api):
+    """Gemini 3 narrates in content blocks and attaches a thought signature.
+    Stringifying that list would ship the block repr — signature and all — to
+    the user as the answer."""
+    parsed = ParsedCausalQuery(
+        query_type="optimal_policy", context={"demand": 13.0}
+    )
+    app, _ = build(
+        api,
+        parsed,
+        explain_content=[
+            {
+                "type": "text",
+                "text": "Narrated answer.",
+                "extras": {"signature": "EpwDCpkDARFNMg"},
+            },
+        ],
+    )
+    final = run(app)
+
+    assert final[st.KEY_FINAL] == "Narrated answer."
 
 
 # ── Transport ───────────────────────────────────────────────────────────────

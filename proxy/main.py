@@ -781,7 +781,7 @@ class PromptRequest(BaseModel):
     """
     prompt: str
     causal_reasoning: bool = True
-    model_name: str = "gemini-2.5-flash"
+    model_name: str = "gemini-3.6-flash"
     chat_id: Optional[str] = None  # Maps to Agent Session ID
     attachments: list = Field(default_factory=list)  # file_ids from POST /upload
     run_id: Optional[str] = None   # correlation id for this turn (see _safe_run_id)

@@ -490,7 +490,7 @@ Keyed by the symptom you actually observe.
 
 ## 2.10 Cost and teardown
 
-Per answered question: **two Gemini calls** (`gemini-2.5-flash` by default) and
+Per answered question: **two Gemini calls** (`gemini-3.6-flash` by default) and
 one 20,000-sample Monte Carlo run. Clarifications and errors cost one call. The
 math is free of LLM cost entirely.
 

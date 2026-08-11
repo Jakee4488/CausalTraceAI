@@ -364,8 +364,11 @@ def build_causal_langgraph_app(
                     ),
                 ]
             )
-            content = response.content
-            answer = content if isinstance(content, str) else str(content)
+            # Gemini 3 answers as a list of content blocks (the text plus a
+            # thought signature), so ``.content`` is no longer a bare string
+            # and ``str()`` of it would ship the block repr to the user.
+            # ``.text`` joins the text blocks and passes a plain string through.
+            answer = response.text
             return {
                 st.KEY_FINAL: answer,
                 st.KEY_STATUS: _status("complete"),

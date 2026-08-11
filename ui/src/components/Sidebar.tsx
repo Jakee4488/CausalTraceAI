@@ -105,8 +105,8 @@ export function Sidebar({
               value={model}
               onChange={(e) => onModelChange(e.target.value)}
             >
-              <option value="gemini-2.5-flash">gemini-2.5-flash</option>
-              <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+              <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+              <option value="gemini-pro-latest">gemini-pro-latest</option>
             </select>
           </label>
 

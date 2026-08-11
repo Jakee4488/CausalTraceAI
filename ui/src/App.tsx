@@ -51,7 +51,7 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(isNarrow);
   const [theme, setTheme] = useState<Theme>(currentTheme);
   const [tokenTally, setTokenTally] = useState(0);
-  const [model, setModel] = useState("gemini-2.5-flash");
+  const [model, setModel] = useState("gemini-3.6-flash");
   const [showExtension, setShowExtension] = useState(false);
 
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);

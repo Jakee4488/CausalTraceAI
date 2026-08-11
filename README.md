@@ -135,7 +135,7 @@ for GPU support nothing here uses.
 
 | Variable | Default | Effect |
 |---|---|---|
-| `CAUSAL_MODEL` | `gemini-2.5-flash` | Model for both LLM calls |
+| `CAUSAL_MODEL` | `gemini-3.6-flash` | Model for both LLM calls |
 | `CAUSAL_NUM_SAMPLES` | `20000` | Monte Carlo worlds per query |
 | `CAUSAL_SEED` | `123` | Sampling seed — changing it changes every reported number |
 | `AGENT_ENGINE_ENDPOINT` | — | Unset ⇒ the proxy serves its offline mock |
