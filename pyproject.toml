@@ -13,7 +13,10 @@ dependencies = [
     "langchain-google-genai>=4.3.2",
     "pyro-ppl>=1.9",
     "torch>=2.2",
-    "google-cloud-aiplatform[agent_engines,langchain]>=1.162.0",
+    # [agent_engines] only — see requirements.txt for why [langchain] is
+    # dropped (it pins langchain-google-genai<4.2.3, disjoint from the >=4.3.2
+    # required below).
+    "google-cloud-aiplatform[agent_engines]>=1.162.0",
     "google-auth>=2.29.0",
     "google-cloud-logging",
     "python-dotenv",

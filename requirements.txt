@@ -28,7 +28,15 @@ torch>=2.2
 
 # ── Platform ─────────────────────────────────────────────────────────────────
 # 1.162 is the floor for vertexai.agent_engines.templates.langgraph.
-google-cloud-aiplatform[agent_engines,langchain]>=1.162.0
+#
+# [agent_engines] only, not [agent_engines,langchain]. The "langchain" extra is
+# for the SDK's own default LangChain-based agent template, which this project
+# does not use — src/agent.py supplies its own compiled graph via
+# runnable_builder. That extra also pins langchain-google-genai<4.2.3, a range
+# with no overlap with the >=4.3.2 pinned two lines up, so requesting both
+# extras makes this file's own two constraints unsatisfiable together. Nothing
+# under src/ imports langchain, langchain_classic or openinference (grepped).
+google-cloud-aiplatform[agent_engines]>=1.162.0
 google-auth>=2.29.0
 google-cloud-logging
 python-dotenv
