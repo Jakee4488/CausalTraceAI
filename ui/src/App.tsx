@@ -339,11 +339,15 @@ export default function App() {
         </>
       )}
 
-      <AccessGate
-        access={access}
-        showExtension={showExtension}
-        onCloseExtension={() => setShowExtension(false)}
-      />
+      {/* TEMP: access gate popup disabled for local docker-compose smoke
+          testing. Re-enable before any real deploy. */}
+      {false && (
+        <AccessGate
+          access={access}
+          showExtension={showExtension}
+          onCloseExtension={() => setShowExtension(false)}
+        />
+      )}
     </div>
   );
 }

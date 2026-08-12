@@ -1,0 +1,33 @@
+services:
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile.proxy
+    image: causaltraceai-proxy:local
+    ports:
+      - "8080:8080"
+    environment:
+      # MODE=mock (default) needs no cloud credentials at all: the proxy serves
+      # its scripted SSE run from proxy/mockdata.py. Set MODE= (empty) to
+      # instead resolve AGENT_ENGINE_ENDPOINT from deployment_metadata.json and
+      # hit the real deployed Agent Engine.
+      MODE: ${MODE:-mock}
+      GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-icarus-agent-26}
+      GOOGLE_CLOUD_REGION: ${GOOGLE_CLOUD_REGION:-europe-west2}
+      # Memory-backed access store by default so local/E2E runs need no
+      # Firestore database. Override to hit real Firestore.
+      ACCESS_STORE: ${ACCESS_STORE:-memory}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-local-admin}
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      # No SMTP/Resend configured locally; print sign-in links to the
+      # container logs instead of failing the send.
+      ACCESS_MAIL_TRANSPORT: console
+      ACCESS_NOTIFY_EMAIL: ${ACCESS_NOTIFY_EMAIL:-jacobbinu4488code@gmail.com}
+    volumes:
+      # docker/local-entrypoint.sh resolves AGENT_ENGINE_ENDPOINT from this
+      # file when MODE != mock, so redeploying the agent and re-running
+      # `docker compose up` picks up the new engine automatically.
+      - ./deployment_metadata.json:/app/deployment_metadata.json:ro
+      - ./docker/local-entrypoint.sh:/app/docker/local-entrypoint.sh:ro
+      - ./proxy:/app/proxy:ro
+    entrypoint: ["/bin/sh", "/app/docker/local-entrypoint.sh"]
