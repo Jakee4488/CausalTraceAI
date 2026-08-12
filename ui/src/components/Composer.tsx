@@ -59,34 +59,45 @@ export function Composer({
   return (
     <div className="composer">
       <div className="composer-inner">
-        <div className="chips-row" id="attachment-chips">
-          {attachments.map((att) => (
-            <Chip key={att.localId} att={att} onRemove={() => onRemoveAttachment(att.localId)} />
-          ))}
-        </div>
+        {/* TEMP: attachment chips disabled — uploads removed for local
+            docker-compose smoke testing. Re-enable before any real deploy. */}
+        {false && (
+          <div className="chips-row" id="attachment-chips">
+            {attachments.map((att) => (
+              <Chip key={att.localId} att={att} onRemove={() => onRemoveAttachment(att.localId)} />
+            ))}
+          </div>
+        )}
         <div className={locked ? "input-pill locked" : "input-pill"} onClick={locked ? onUnlock : undefined}>
-          <button
-            className="attach-btn"
-            id="attach-btn"
-            aria-label="Attach files"
-            title="Attach files"
-            disabled={locked}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            +
-          </button>
-          <input
-            type="file"
-            id="file-input"
-            multiple
-            hidden
-            ref={fileInputRef}
-            accept={ALLOWED_EXTENSIONS.join(",")}
-            onChange={(e) => {
-              onFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
+          {/* TEMP: file-attach button + hidden input disabled — uploads
+              removed for local docker-compose smoke testing. Re-enable
+              before any real deploy. */}
+          {false && (
+            <>
+              <button
+                className="attach-btn"
+                id="attach-btn"
+                aria-label="Attach files"
+                title="Attach files"
+                disabled={locked}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                +
+              </button>
+              <input
+                type="file"
+                id="file-input"
+                multiple
+                hidden
+                ref={fileInputRef}
+                accept={ALLOWED_EXTENSIONS.join(",")}
+                onChange={(e) => {
+                  onFiles(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </>
+          )}
           <textarea
             id="chat-input"
             rows={1}

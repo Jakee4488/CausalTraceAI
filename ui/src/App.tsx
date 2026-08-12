@@ -67,6 +67,13 @@ export default function App() {
   const run = useRunProgress();
 
   const { approved, applyRefusal, logOut } = access;
+  // TEMP: no login flow in this local build (Login/ProfileMenu/Sidebar are
+  // all hidden below), so `approved` can never become true through the UI.
+  // Backend enforcement on /analyze-prompt is already disabled to match
+  // (proxy/main.py's analyze_prompt: `# access.require_access(user)`).
+  // Re-enable before any real deploy: delete this line, revert the 3
+  // `canSend` usages below back to `approved`.
+  const canSend = true;
   const { reload: reloadHistory, reset: resetHistory } = history;
   useEffect(() => {
     if (approved) void reloadHistory();
@@ -124,7 +131,7 @@ export default function App() {
     if (!text || isSendingRef.current) return;
     // The gate is enforced server-side; this just keeps the modal in front of
     // someone who got here without a session instead of firing a doomed request.
-    if (!approved) return;
+    if (!canSend) return;
 
     setInput("");
     if (!chatIdRef.current) chatIdRef.current = generateSessionId();
@@ -201,7 +208,7 @@ export default function App() {
       isSendingRef.current = false;
       abortControllerRef.current = null;
     }
-  }, [input, attachments, model, approved, applyRefusal,
+  }, [input, attachments, model, canSend, applyRefusal,
       append, clear, reloadHistory, run]);
 
   const openConversation = useCallback(async (chatId: string) => {
@@ -267,19 +274,24 @@ export default function App() {
       }
       style={showRightPane ? { "--right-pane-width": `${rightPaneWidth}px` } as React.CSSProperties : undefined}
     >
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        signedIn={approved}
-        conversations={history.conversations}
-        hasMore={history.hasMore}
-        onSelect={openConversation}
-        onLoadMore={history.loadMore}
-        onNewChat={newChat}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        model={model}
-        onModelChange={setModel}
-      />
+      {/* TEMP: sidebar (logo, new-chat, 24h history, model dropdown, theme
+          toggle) disabled for local docker-compose smoke testing. Re-enable
+          before any real deploy. */}
+      {false && (
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          signedIn={approved}
+          conversations={history.conversations}
+          hasMore={history.hasMore}
+          onSelect={openConversation}
+          onLoadMore={history.loadMore}
+          onNewChat={newChat}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          model={model}
+          onModelChange={setModel}
+        />
+      )}
 
       <main className="chat-container">
         <ChatHeader
@@ -307,15 +319,18 @@ export default function App() {
           onSend={send}
           onStop={stop}
           isSending={isSending}
-          disabled={!approved || isSending || (!input.trim() && attachments.length === 0)}
-          locked={!approved}
+          disabled={!canSend || isSending || (!input.trim() && attachments.length === 0)}
+          locked={!canSend}
           onUnlock={logOut}
           attachments={attachments}
           onFiles={handleFiles}
           onRemoveAttachment={remove}
         />
 
-        {approved && <DropOverlay onFiles={handleFiles} />}
+        {/* TEMP: drag-and-drop file overlay disabled — uploads removed for
+            local docker-compose smoke testing. Re-enable before any real
+            deploy. */}
+        {false && approved && <DropOverlay onFiles={handleFiles} />}
       </main>
 
       {showRightPane && (

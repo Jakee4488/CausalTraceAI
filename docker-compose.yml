@@ -14,6 +14,9 @@ services:
       MODE: ${MODE:-mock}
       GOOGLE_CLOUD_PROJECT: ${GOOGLE_CLOUD_PROJECT:-icarus-agent-26}
       GOOGLE_CLOUD_REGION: ${GOOGLE_CLOUD_REGION:-europe-west2}
+      # Only read when MODE != mock (the proxy's ADC lookup, _agent_credentials
+      # in proxy/main.py, needs a real credential file to call Agent Engine).
+      GOOGLE_APPLICATION_CREDENTIALS: /gcp/adc.json
       # Memory-backed access store by default so local/E2E runs need no
       # Firestore database. Override to hit real Firestore.
       ACCESS_STORE: ${ACCESS_STORE:-memory}
@@ -30,4 +33,8 @@ services:
       - ./deployment_metadata.json:/app/deployment_metadata.json:ro
       - ./docker/local-entrypoint.sh:/app/docker/local-entrypoint.sh:ro
       - ./proxy:/app/proxy:ro
+      # Host gcloud ADC (from `gcloud auth application-default login`), only
+      # needed when MODE != mock. Override GOOGLE_ADC_PATH if it lives
+      # elsewhere on your machine.
+      - ${GOOGLE_ADC_PATH:-C:/Users/jacob/AppData/Roaming/gcloud/application_default_credentials.json}:/gcp/adc.json:ro
     entrypoint: ["/bin/sh", "/app/docker/local-entrypoint.sh"]
