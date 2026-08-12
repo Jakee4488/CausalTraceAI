@@ -34,7 +34,8 @@ from proxy.mockdata import (
 )
 
 app = FastAPI(title="CausalTraceAI Proxy")
-app.include_router(admin.router)
+# TEMP: admin panel disabled for local docker-compose smoke testing.
+# Re-enable before any real deploy: app.include_router(admin.router)
 
 
 @app.on_event("startup")
@@ -208,6 +209,41 @@ def read_root(request: Request):
 def health_check():
     """Health probe."""
     return {"status": "ok"}
+
+
+# ── Dev-only session bootstrap ────────────────────────────────────────────────
+# Only mounted when ACCESS_STORE=memory (local / CI). Never reaches production
+# because production never sets ACCESS_STORE=memory.
+
+if os.getenv("ACCESS_STORE") == "memory":
+    @app.get("/dev/session")
+    def dev_session(email: str = "browser-test@local.dev"):
+        """Return a live session token for an approved test user.
+
+        Skips the email magic-link flow so automated browser tests can sign in
+        without an inbox. Removed from the app when ACCESS_STORE != memory.
+        """
+        record, _ = access.create_or_touch_request(email)
+        access.set_status(email, "approved")
+        record = access.get_record(email, cached=False)
+        token = access.mint_session(email, record)
+        return {"token": token, "email": email}
+
+    @app.get("/dev/autologin")
+    async def dev_autologin(email: str = "browser-test@local.dev"):
+        """Redirect browser through the real ?auth= magic-link flow.
+
+        Creates an approved user, issues a single-use login nonce, and redirects
+        to /?auth=<token> so the SPA calls /auth/exchange and stores the session
+        in sessionStorage itself — no JS injection required.
+        Only available when ACCESS_STORE=memory (never in production).
+        """
+        access.create_or_touch_request(email)
+        access.set_status(email, "approved")
+        nonce = access.issue_login_nonce(email)
+        link = access.login_link(email, nonce)
+        return RedirectResponse(url=link)
+
 
 # ── Access API ───────────────────────────────────────────────────────────────
 #

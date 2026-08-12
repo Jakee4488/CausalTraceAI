@@ -28,7 +28,7 @@ from src.causal.problem import get_causal_api
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-MODEL = os.environ.get("CAUSAL_MODEL", "gemini-3.6-flash")
+MODEL = os.environ.get("CAUSAL_MODEL", "gemini-2.5-flash")
 
 
 def _int_env(name: str, default: int) -> int:
