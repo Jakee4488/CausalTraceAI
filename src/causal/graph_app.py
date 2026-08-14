@@ -30,6 +30,7 @@ from src.causal import runtime, state as st
 from src.causal.causes import Intervention
 from src.causal.graph_view import build_ui_graph, interventions_from_parsed
 from src.causal.models import CausalStatus, ParsedCausalQuery
+from src.causal.node_logging import NodeLogger
 from src.causal.prompts import (
     build_query_interpreter_prompt,
     build_result_explanation_prompt,
@@ -92,11 +93,29 @@ def build_causal_langgraph_app(
     )
     graph_description = causal_api.describe_graph()
 
+    # Structured logging, wired in at add_node time below. Everything it needs
+    # that is fixed for the process is resolved once, here, so no node has to
+    # report its own settings: the model name, the cause set the clamped /
+    # stochastic split is taken against, and the sampling settings.
+    observer = NodeLogger(
+        model_name=(
+            getattr(model, "model_name", None) or getattr(model, "model", None)
+        ),
+        cause_names=list(causal_api.causes),
+        num_samples=default_num_samples,
+        seed=default_seed,
+    )
+
     # ── Node 1: LLM interprets natural language ─────────────────────────────
 
     def interpret_query(state: st.CausalApplicationState) -> dict:
         raw_input = (state.get("user_input") or "").strip()
-        run_id = extract_run_id(raw_input)
+        # The logging wrapper resolves the correlation id before this node runs
+        # — from the proxy's marker, or a fresh uuid when there is none — so its
+        # `start` record carries the same id as every record downstream. Read it
+        # back rather than re-deriving, and fall back to the marker so a direct
+        # (unwrapped) call still behaves exactly as it always did.
+        run_id = state.get(st.KEY_RUN_ID) or extract_run_id(raw_input)
         user_input = strip_markers(raw_input)
 
         base: dict[str, Any] = {
@@ -420,21 +439,39 @@ def build_causal_langgraph_app(
 
     builder = StateGraph(st.CausalApplicationState)
 
-    builder.add_node("interpret_query", interpret_query)
-    builder.add_node("validate_query", validate_query)
-    builder.add_node("optimal_policy", run_optimal_policy)
-    builder.add_node("intervention_effect", run_intervention_effect)
-    builder.add_node("posterior_summary", run_posterior_summary)
-    builder.add_node("clarification", return_clarification)
-    builder.add_node("explain_result", explain_result)
-    builder.add_node("error", return_error)
+    # Every node is registered through the logger. The wrapper returns what the
+    # node returned, unchanged; the node names stay byte-identical because the
+    # proxy's STAGE_BY_NODE mapping keys off them.
+    builder.add_node(
+        "interpret_query",
+        observer.node("interpret_query", interpret_query, entry=True, llm=True),
+    )
+    builder.add_node("validate_query", observer.node("validate_query", validate_query))
+    builder.add_node(
+        "optimal_policy", observer.node("optimal_policy", run_optimal_policy)
+    )
+    builder.add_node(
+        "intervention_effect",
+        observer.node("intervention_effect", run_intervention_effect),
+    )
+    builder.add_node(
+        "posterior_summary",
+        observer.node("posterior_summary", run_posterior_summary),
+    )
+    builder.add_node(
+        "clarification", observer.node("clarification", return_clarification)
+    )
+    builder.add_node(
+        "explain_result", observer.node("explain_result", explain_result, llm=True)
+    )
+    builder.add_node("error", observer.node("error", return_error))
 
     builder.add_edge(START, "interpret_query")
     builder.add_edge("interpret_query", "validate_query")
 
     builder.add_conditional_edges(
         "validate_query",
-        route_after_validation,
+        observer.router("validate_query", route_after_validation),
         {
             "optimal_policy": "optimal_policy",
             "intervention_effect": "intervention_effect",
@@ -451,7 +488,7 @@ def build_causal_langgraph_app(
     ):
         builder.add_conditional_edges(
             compute_node,
-            route_after_calculation,
+            observer.router(compute_node, route_after_calculation),
             {"explain": "explain_result", "error": "error"},
         )
 

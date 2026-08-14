@@ -428,6 +428,50 @@ gcloud run services logs read causaltraceai-app-v2 --region europe-west2 --limit
 Each turn prints `run_id=... trace_id=... chat_id=...`, so a run in the UI can be
 found in Cloud Logging and followed into Cloud Trace.
 
+### Agent-side structured logs
+
+That line comes from the proxy. The agent itself — the LangGraph pipeline in the
+Agent Engine — writes one JSON object per node boundary to stdout, which Cloud
+Logging parses into `jsonPayload`. `src/app_utils/jsonlog.py` sets up the
+formatter; `src/causal/node_logging.py` produces the records.
+
+Every record carries `request_id`, `node`, `phase` (`start` / `end` / `route`),
+`timestamp`, and on exit `duration_ms`. The `request_id` **is** the proxy's
+`run_id` — the same value the UI shows in the causal panel — so a run seen in the
+browser is one copy-paste away from its logs:
+
+```bash
+gcloud logging read 'jsonPayload.request_id="<run id from the UI>"' --limit 50 \
+  --format='value(jsonPayload.node, jsonPayload.phase, jsonPayload.duration_ms)'
+```
+
+Three filters worth knowing:
+
+| filter | finds |
+|---|---|
+| `jsonPayload.duration_ms>2000` | the slow node in a slow turn |
+| `jsonPayload.token_usage.total_tokens>4000` | expensive turns, per Gemini call |
+| `jsonPayload.math.margin_exceeds_mc_error=false` | recommendations where the best and runner-up policies are inside Monte Carlo error — a coin flip reported as an answer |
+
+The compute nodes log the mathematics, not just the result: the estimand that was
+evaluated, the sample count and seed, which causes were clamped versus integrated
+over, and the full per-decision table (expected utility, standard deviation,
+Monte Carlo standard error, 95% bounds, probability each action is best).
+
+Two environment variables:
+
+| variable | default | effect |
+|---|---|---|
+| `CAUSAL_LOG_LEVEL` | `INFO` | Standard level names. Junk falls back to `INFO` rather than failing start-up. |
+| `CAUSAL_LOG_CONTENT` | unset (off) | When true, the raw question and the narrated answer appear in the logs as text instead of a length and a hash. |
+
+**Leave `CAUSAL_LOG_CONTENT` unset in production.** The default mirrors the
+NO_CONTENT span policy in `src/app_utils/telemetry.py`, and for the same reason:
+those two strings are already retained in Firestore, and Cloud Logging has a
+different retention and IAM story. Everything needed to debug a turn — the
+structured query the model produced, the route, the numbers — is logged either
+way.
+
 ## 2.7 Cutover
 
 Only after the new stack answers real questions correctly.

@@ -20,12 +20,18 @@ from typing import Any
 
 from dotenv import load_dotenv
 
+from src.app_utils.jsonlog import configure_logging
 from src.app_utils.telemetry import setup_telemetry
 from src.causal import state as st
 from src.causal.graph_app import build_causal_langgraph_app
 from src.causal.problem import get_causal_api
 
 load_dotenv()
+
+# JSON lines on stdout, which is what Cloud Run and Agent Engine collect. Set up
+# at import so it covers the module-level warnings below as well as every node
+# record; idempotent, so a second set_up() on the serving side is harmless.
+configure_logging()
 logger = logging.getLogger(__name__)
 
 MODEL = os.environ.get("CAUSAL_MODEL", "gemini-2.5-flash")
