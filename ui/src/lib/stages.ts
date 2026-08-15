@@ -1,4 +1,4 @@
-import type { CausalGraph } from "../types";
+import type { CausalGraph, NodeRun } from "../types";
 
 export type StageStatus = "pending" | "active" | "done" | "failed" | "skipped";
 
@@ -7,6 +7,8 @@ export interface Stage {
   label: string;
   status: StageStatus;
   steps: string[];
+  /** The graph nodes that actually ran under this stage, in order. */
+  nodes: NodeRun[];
   startedMs: number | null;
   endedMs: number | null;
   current?: { index: number; total: number };
@@ -17,10 +19,24 @@ export interface ProgressFrame {
   message?: string | null;
   step?: string | null;
   steps?: string[];
+  nodes?: NodeRun[];
   elapsed_ms?: number;
   index?: number;
   total?: number;
   graph?: CausalGraph | null;
+}
+
+/**
+ * A stage's duration from its nodes, when the proxy reported them.
+ *
+ * Better than the frame-arrival arithmetic below, which measures "time until
+ * the next stage started" and so charges each stage for the gap after it.
+ * Returns null when there is no node data — mock mode and replayed history
+ * predate it — and the caller keeps the old number.
+ */
+export function stageDurationMs(stage: Stage): number | null {
+  if (!stage.nodes.length) return null;
+  return stage.nodes.reduce((total, run) => total + (run.duration_ms || 0), 0);
 }
 
 // One entry per stage the proxy can report (proxy/main.py STAGE_BY_NODE). The
@@ -58,6 +74,7 @@ function cloneStage(stage: Stage): Stage {
   return {
     ...stage,
     steps: [...stage.steps],
+    nodes: [...stage.nodes],
     current: stage.current ? { ...stage.current } : undefined,
   };
 }
@@ -70,6 +87,7 @@ export function initialStages(): Stage[] {
     // branch here.
     status: "pending",
     steps: [],
+    nodes: [],
     startedMs: null,
     endedMs: null,
   }));
@@ -79,6 +97,16 @@ export function applyProgress(prev: Stage[], frame: ProgressFrame): Stage[] {
   const stages = prev.map(cloneStage);
   const stageId = normalizeStage(frame.stage);
   const elapsed = frame.elapsed_ms ?? 0;
+
+  // Routed by each run's own stage rather than the frame's: one chunk can carry
+  // several nodes, and the frame reports only the last one it saw.
+  for (const run of frame.nodes ?? []) {
+    const target = normalizeStage(run.stage ?? frame.stage);
+    const owner = stages.find((stage) => stage.id === target);
+    if (owner && !owner.nodes.some((seen) => seen.at_ms === run.at_ms && seen.node === run.node)) {
+      owner.nodes.push(run);
+    }
+  }
 
   if (!stageId) return stages;
   const idx = stages.findIndex((stage) => stage.id === stageId);
@@ -113,6 +141,28 @@ export function applyProgress(prev: Stage[], frame: ProgressFrame): Stage[] {
   }
 
   return stages;
+}
+
+/**
+ * Rebuild a finished timeline from a persisted node trace.
+ *
+ * Live runs capture their stages as they go; a turn replayed out of history has
+ * none, and used to show no timeline at all. The node trace persists with the
+ * rest of the causal payload, which is enough to reconstruct what ran and how
+ * long each node took — everything except the trace lines, which the report
+ * carries separately.
+ */
+export function stagesFromNodeTrace(trace: NodeRun[] | undefined): Stage[] | null {
+  if (!trace?.length) return null;
+  const stages = initialStages();
+  for (const run of trace) {
+    const owner = stages.find((stage) => stage.id === normalizeStage(run.stage ?? run.node));
+    if (owner) owner.nodes.push(run);
+  }
+  return stages.map((stage) => ({
+    ...stage,
+    status: stage.nodes.length ? "done" : "skipped",
+  }));
 }
 
 export function finalizeStages(prev: Stage[], elapsedMs: number, failed: boolean): Stage[] {

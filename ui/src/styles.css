@@ -1,43 +1,70 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   CausalTraceAI — neon-dark design system
+   CausalTraceAI — slate design system
    Tokens on :root (dark default); html[data-theme="light"] overrides.
+
+   Slate grounds, one teal accent, flat surfaces. Replaces the neon cyan/violet
+   scheme: the glows and the two-hue gradient were decorating a product whose
+   subject is uncertainty, and a saturated interface competes with the marks
+   that are supposed to carry meaning.
+
+   Every value below was validated rather than picked. Marks went through the
+   data-viz palette validator (lightness band, chroma floor, CVD separation
+   under protan/deutan, contrast vs each surface); ink went through WCAG at
+   4.5:1 against all four surface steps — including surface-3, which is the
+   worst case and where the first pass of this palette put four tokens between
+   3.99 and 4.47. Numbers quoted per token are the worst case across surfaces.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-    --surface-0: #0a0c12;
-    --surface-1: #10131c;
-    --surface-2: #161a26;
-    --surface-3: #1b2030;
-    --text-1: #e9edf7;
-    --text-2: #98a2b8;
+    --surface-0: #0d1117;
+    --surface-1: #141a22;
+    --surface-2: #1b222c;
+    --surface-3: #232b37;
+    --text-1: #e6ecf3;
+    --text-2: #9aa8b8;
     /* --text-3 carries the entire quantitative layer: axis ticks, elapsed
-       times, step counters, p-values, the graph key. At #5c6478 all of it sat
-       between 2.74:1 and 3.30:1 — the numbers were the least readable text in
-       a numbers product. This clears 4.5:1 on every surface token below
-       (6.00:1 on surface-0, 4.97:1 on surface-3). */
-    --text-3: #858fa1;
-    --cyan: #22d3ee;
-    /* Cyan as *text*. Identical in dark, darkened in light where the mark
-       colour only reaches 3.1:1 on the badge grounds it is used on. */
-    --cyan-text: #22d3ee;
-    --violet: #8b5cf6;
+       times, step counters, node durations, the graph key. In a numbers product
+       these must not be the least readable text on screen — 4.92:1 worst case. */
+    --text-3: #8c99a8;
+    /* The accent. Brightest step that still sits inside the dark lightness band
+       (OKLCH L 0.48–0.67) — #35b8a3 and #31ab99 were both rejected at 0.708 and
+       0.671 by the validator. */
+    --cyan: #2fa896;
+    /* Teal as *text* needs the 4.5:1 bar the mark step does not clear. */
+    --cyan-text: #3dbda9;
+    /* Secondary is now slate, not violet: nothing in this UI encodes a second
+       identity, so the second hue was decoration. */
+    --violet: #949fb5;
     /* Edge bands. Single source of truth for the canvas *and* the legend —
-       graph.ts no longer writes colour inline, so these apply in both themes. */
-    --edge-critical: #a78bfa;
-    --edge-firm: #2dd4bf;
-    --edge-soft: #7b8798;
-    --grad: linear-gradient(135deg, var(--cyan), var(--violet));
-    --glass-bg: rgba(255, 255, 255, 0.035);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --user-bubble-bg: linear-gradient(135deg, rgba(34, 211, 238, 0.13), rgba(139, 92, 246, 0.19));
-    --user-bubble-border: rgba(139, 92, 246, 0.38);
-    --glow-sm: 0 0 12px rgba(34, 211, 238, 0.25);
-    --glow-md: 0 0 24px rgba(139, 92, 246, 0.30);
-    --ok: #34d399;
-    --warn: #fbbf24;
-    --err: #f87171;
+       graph.ts no longer writes colour inline, so these apply in both themes.
+       The two coloured bands validate all-pairs (CVD ΔE 13.2 deutan, 21.4
+       normal); the third is a deliberate neutral — "weakly supported" is the
+       absence of emphasis — and leans on its dash pattern and legend label
+       rather than on hue. */
+    --edge-critical: #9085e9;
+    --edge-firm: #2fa896;
+    --edge-soft: #7d8b9a;
+    /* Graph node state: a cause forced by do(). Blue rather than the accent
+       because an intervened node sits directly beside an observed one, and
+       teal-vs-green measured ΔE 9.7 under normal vision — below the 15 floor,
+       i.e. hard to tell apart even with full colour vision. Blue vs green
+       measures 27.9. */
+    --status-active: #3987e5;
+    /* Flat: one hue, a step apart. The old cyan→violet sweep implied a
+       relationship between two colours that never encoded one. */
+    --grad: linear-gradient(135deg, var(--cyan), #24796c);
+    --glass-bg: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.07);
+    --user-bubble-bg: linear-gradient(135deg, rgba(47, 168, 150, 0.12), rgba(57, 135, 229, 0.10));
+    --user-bubble-border: rgba(47, 168, 150, 0.34);
+    /* Shadow, not glow — depth without emission. */
+    --glow-sm: 0 1px 3px rgba(0, 0, 0, 0.35);
+    --glow-md: 0 6px 20px rgba(0, 0, 0, 0.42);
+    --ok: #18b418;
+    --warn: #fab219;
+    --err: #ec8080;
     --border: rgba(255, 255, 255, 0.09);
-    --code-bg: #0d1017;
+    --code-bg: #0b0f15;
     --radius-sm: 8px;
     --radius-md: 14px;
     --radius-lg: 20px;
@@ -51,45 +78,49 @@
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     /* list entry + ripple hop */
     --stagger: 80ms;
-    --ambient-a: rgba(34, 211, 238, 0.05);
-    --ambient-b: rgba(139, 92, 246, 0.07);
+    /* Ambient wash, near-neutral. The old pair tinted the whole page cyan and
+       violet, which is what made the interface read as "neon" before a single
+       component rendered. */
+    --ambient-a: rgba(47, 168, 150, 0.035);
+    --ambient-b: rgba(148, 159, 181, 0.04);
     color-scheme: dark;
 }
 
 html[data-theme="light"] {
-    --surface-0: #eef1f7;
+    --surface-0: #eef1f5;
     --surface-1: #ffffff;
-    --surface-2: #f6f8fd;
-    --surface-3: #eceff8;
-    --text-1: #1b2233;
-    --text-2: #59637a;
-    /* 6.00:1 on white, 5.30:1 on surface-0, 4.83:1 on the tinted plot grounds
-       — the light theme was the worse of the two here, at 2.14–2.62:1. */
+    --surface-2: #f7f9fb;
+    --surface-3: #eaeef3;
+    --text-1: #17202e;
+    --text-2: #55627a;
+    /* 5.13:1 worst case (on surface-3); the quantitative layer stays readable
+       in both themes rather than only in the one the author used. */
     --text-3: #5b6472;
-    --cyan: #0894b3;
-    --cyan-text: #046b83;
-    --violet: #7c3aed;
-    --edge-critical: #6d28d9;
-    --edge-firm: #0d7a6c;
+    --cyan: #2a9d8f;
+    --cyan-text: #1a6b60;
+    --violet: #4a5568;
+    --edge-critical: #4a3aa7;
+    --edge-firm: #2a9d8f;
     --edge-soft: #6b7686;
-    --glass-bg: rgba(255, 255, 255, 0.65);
-    --glass-border: rgba(27, 34, 51, 0.10);
-    --user-bubble-bg: linear-gradient(135deg, rgba(8, 148, 179, 0.10), rgba(124, 58, 237, 0.12));
-    --user-bubble-border: rgba(124, 58, 237, 0.30);
-    --glow-sm: 0 2px 10px rgba(8, 148, 179, 0.14);
-    --glow-md: 0 4px 18px rgba(124, 58, 237, 0.16);
-    --border: rgba(27, 34, 51, 0.12);
-    --code-bg: #10131c;
-    --ambient-a: rgba(8, 148, 179, 0.05);
-    --ambient-b: rgba(124, 58, 237, 0.05);
-    /* Status colours need their own light steps: the dark ones sit at 1.7–2.8:1
-       on white, under the 3:1 floor for a non-text mark. These were picked with
-       the palette validator — all checks pass on #ffffff, and the one residual
-       WARN (amber at 2.94:1) is covered by the visible value labels every mark
-       carries. */
-    --ok: #047857;
-    --warn: #ca8a04;
-    --err: #be123c;
+    --status-active: #2a78d6;
+    --grad: linear-gradient(135deg, var(--cyan), #1f7a6f);
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-border: rgba(23, 32, 46, 0.10);
+    --user-bubble-bg: linear-gradient(135deg, rgba(42, 157, 143, 0.10), rgba(42, 120, 214, 0.08));
+    --user-bubble-border: rgba(42, 157, 143, 0.30);
+    --glow-sm: 0 1px 3px rgba(23, 32, 46, 0.10);
+    --glow-md: 0 6px 20px rgba(23, 32, 46, 0.12);
+    --border: rgba(23, 32, 46, 0.12);
+    --code-bg: #141a22;
+    --ambient-a: rgba(42, 157, 143, 0.04);
+    --ambient-b: rgba(74, 85, 104, 0.035);
+    /* Status needs its own light steps — the dark ones sit under the 3:1 mark
+       floor on white, and these tokens are used as text as well as marks, so
+       they are held to 4.5:1 rather than 3:1. Success green is the documented
+       light *text* step, not the mark step, for exactly that reason. */
+    --ok: #006300;
+    --warn: #8a6100;
+    --err: #c02a2a;
     color-scheme: light;
 }
 
@@ -234,7 +265,7 @@ a:focus-visible {
 .new-chat-btn:hover {
     transform: translateY(-1px);
     box-shadow: var(--glow-sm);
-    border-color: rgba(34, 211, 238, 0.45);
+    border-color: color-mix(in srgb, var(--cyan) 45%, transparent);
 }
 
 .new-chat-btn .plus {
@@ -408,15 +439,15 @@ a:focus-visible {
     font-variant-numeric: tabular-nums;
     font-size: 11.5px;
     color: var(--cyan-text);
-    background: rgba(34, 211, 238, 0.10);
-    border: 1px solid rgba(34, 211, 238, 0.28);
+    background: color-mix(in srgb, var(--cyan) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cyan) 28%, transparent);
     padding: 3px 10px;
     border-radius: 999px;
     white-space: nowrap;
 }
 
 html[data-theme="light"] .token-badge {
-    background: rgba(8, 148, 179, 0.08);
+    background: color-mix(in srgb, var(--cyan) 8%, transparent);
 }
 
 .header-controls {
@@ -517,7 +548,7 @@ html[data-theme="light"] .token-badge {
 
 .icon-btn:hover {
     color: var(--text-1);
-    border-color: rgba(34, 211, 238, 0.45);
+    border-color: color-mix(in srgb, var(--cyan) 45%, transparent);
     box-shadow: var(--glow-sm);
 }
 
@@ -786,7 +817,7 @@ html[data-theme="light"] .token-badge {
     margin-top: 13px;
     border: 1px solid var(--glass-border);
     border-left: 3px solid var(--violet);
-    background: rgba(139, 92, 246, 0.05);
+    background: color-mix(in srgb, var(--violet) 5%, transparent);
     padding: 13px 15px;
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     /* Anchor for the detail sheet and its backdrop. */
@@ -821,7 +852,7 @@ html[data-theme="light"] .token-badge {
     padding: 10px 12px;
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-sm);
-    background: rgba(139, 92, 246, 0.07);
+    background: color-mix(in srgb, var(--violet) 7%, transparent);
     display: flex;
     flex-direction: column;
     gap: 7px;
@@ -843,8 +874,8 @@ html[data-theme="light"] .token-badge {
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--violet);
-    background: rgba(139, 92, 246, 0.14);
-    border: 1px solid rgba(139, 92, 246, 0.4);
+    background: color-mix(in srgb, var(--violet) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--violet) 40%, transparent);
     padding: 1px 8px;
     border-radius: 999px;
 }
@@ -952,14 +983,14 @@ html[data-theme="light"] .token-badge {
 /* Web-retrieval status badge in the causal-panel head. */
 .web-badge.dataset {
     color: var(--cyan-text);
-    background: rgba(34, 211, 238, 0.12);
-    border: 1px solid rgba(34, 211, 238, 0.35);
+    background: color-mix(in srgb, var(--cyan) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cyan) 35%, transparent);
 }
 
 .web-badge.evidence {
     color: var(--violet);
-    background: rgba(139, 92, 246, 0.14);
-    border: 1px solid rgba(139, 92, 246, 0.4);
+    background: color-mix(in srgb, var(--violet) 14%, transparent);
+    border: 1px solid color-mix(in srgb, var(--violet) 40%, transparent);
 }
 
 .web-badge.none {
@@ -992,8 +1023,8 @@ html[data-theme="light"] .token-badge {
     padding: 1px 7px;
     border-radius: 5px;
     color: var(--cyan-text);
-    background: rgba(34, 211, 238, 0.10);
-    border: 1px solid rgba(34, 211, 238, 0.25);
+    background: color-mix(in srgb, var(--cyan) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cyan) 25%, transparent);
 }
 
 .step-tag.ok {
@@ -1104,8 +1135,10 @@ html[data-theme="light"] .token-badge {
     box-shadow: inset 0 0 0 1.5px var(--text-3);
 }
 
+/* Matches .dag-node.active — a legend that disagreed with the canvas would be
+   worse than no legend. */
 .lg-dot.active {
-    background: var(--grad);
+    background: var(--status-active);
 }
 
 .lg-dot.failed {
@@ -1182,7 +1215,7 @@ html[data-theme="light"] .token-badge {
     font-family: var(--font-mono);
     color: var(--text-1);
     background: var(--surface-2);
-    border: 1px solid rgba(34, 211, 238, 0.35);
+    border: 1px solid color-mix(in srgb, var(--cyan) 35%, transparent);
     padding: 5px 7px 5px 11px;
     border-radius: 999px;
     animation: msg-in var(--t-fast) ease both;
@@ -1234,7 +1267,7 @@ html[data-theme="light"] .token-badge {
 }
 
 .input-pill:focus-within {
-    border-color: rgba(34, 211, 238, 0.55);
+    border-color: color-mix(in srgb, var(--cyan) 55%, transparent);
     box-shadow: var(--glow-sm);
 }
 
@@ -1319,7 +1352,7 @@ html[data-theme="light"] .token-badge {
     z-index: 10;
     display: none;
     place-items: center;
-    border: 2px dashed rgba(34, 211, 238, 0.6);
+    border: 2px dashed color-mix(in srgb, var(--cyan) 60%, transparent);
     border-radius: var(--radius-lg);
     background: color-mix(in srgb, var(--surface-0) 72%, transparent);
     backdrop-filter: blur(6px);
@@ -1563,8 +1596,8 @@ html[data-theme="light"] .token-badge {
 }
 
 @keyframes stage-glow {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.45); }
-    50%      { box-shadow: 0 0 0 6px rgba(34, 211, 238, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cyan) 45%, transparent); }
+    50%      { box-shadow: 0 0 0 6px color-mix(in srgb, var(--cyan) 0%, transparent); }
 }
 
 @keyframes stage-shake {
@@ -1646,10 +1679,91 @@ button.stage-head:hover .stage-label {
     background: var(--surface-3);
 }
 
+/* The LangGraph node id behind a stage — recessive, because it is an
+   identifier for cross-referencing the logs rather than a label to read. */
+.stage-node {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-3);
+    opacity: 0.75;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Per-call token spend. The header badge shows the turn's total; this is the
+   only place the interpret/explain split is visible. */
+.stage-tokens {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-3);
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    white-space: nowrap;
+}
+
 .stage-time {
     /* Pushed to the trailing edge so durations form a readable column. */
     margin-left: auto;
     font-variant-numeric: tabular-nums;
+}
+
+/* The graph nodes that ran under a stage. Above the trace lines because this
+   is the execution record and those are its narration. */
+.stage-nodes {
+    list-style: none;
+    margin: 6px 0 2px 4px;
+    padding: 0 0 0 9px;
+    border-left: 1px solid var(--border);
+    display: grid;
+    gap: 3px;
+}
+
+.node-row {
+    display: grid;
+    grid-template-columns: minmax(72px, auto) 1fr auto auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.node-name {
+    font-size: 11px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.node-bar {
+    position: relative;
+    height: 4px;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--border) 55%, transparent);
+    overflow: hidden;
+}
+
+.node-bar-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    border-radius: 2px;
+    background: var(--edge-soft);
+}
+
+.node-tokens,
+.node-time {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-3);
+    white-space: nowrap;
+}
+
+.node-time {
+    min-width: 42px;
+    text-align: right;
+    color: var(--text-2);
 }
 
 /* Trace lines for the expanded stage — in place, rather than in a full-height
@@ -1796,10 +1910,13 @@ button.stage-head:hover .stage-label {
     opacity: 0.72;
 }
 
+/* Blue, not the accent: on a causal graph this node is a cause forced by do(),
+   and it renders beside observed causes painted with --ok. Teal beside green
+   measured ΔE 9.7 under normal vision — under the 15 floor. */
 .dag-node.active {
     transform: scale(1.06);
-    border-color: var(--cyan);
-    background: color-mix(in srgb, var(--cyan) 18%, var(--surface-3));
+    border-color: var(--status-active);
+    background: color-mix(in srgb, var(--status-active) 18%, var(--surface-3));
     box-shadow: var(--glow-sm);
     animation: dag-pulse 1.6s ease-in-out infinite;
 }
@@ -1832,8 +1949,8 @@ button.stage-head:hover .stage-label {
 }
 
 @keyframes dag-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.40); }
-    50%      { box-shadow: 0 0 0 8px rgba(34, 211, 238, 0); }
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--cyan) 40%, transparent); }
+    50%      { box-shadow: 0 0 0 8px color-mix(in srgb, var(--cyan) 0%, transparent); }
 }
 
 /* Edge colour lives here and only here. graph.ts used to write inline hex,
@@ -2661,6 +2778,140 @@ button.stage-head:hover .stage-label {
     font-size: 11px;
     font-variant-numeric: tabular-nums;
     color: var(--text-2);
+}
+
+/* ── Estimand, cause split, confidence ──────────────────────────────────────
+   Three strips between the card head and the plot, in the order a reader needs
+   them: what was computed, over what, and whether the answer survives its own
+   sampling error. */
+
+.decision-estimand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.estimand-label {
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    flex: 0 0 auto;
+}
+
+.estimand-formula {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-2);
+    /* Formulas are the one thing here that must not be ellipsised — a truncated
+       estimand reads as a different estimand. */
+    overflow-wrap: anywhere;
+}
+
+.decision-split {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.split-group {
+    display: inline-flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.split-label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-3);
+}
+
+.split-chip {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--text-2);
+}
+
+/* Same three states the graph pane paints its cause nodes with, so the two
+   readings of "what was pinned down" cannot disagree. */
+.split-group.intervened .split-chip {
+    border-color: color-mix(in srgb, var(--accent, var(--ok)) 45%, var(--border));
+    color: var(--text-1);
+}
+
+.split-group.observed .split-chip {
+    border-color: color-mix(in srgb, var(--ok) 40%, var(--border));
+}
+
+.split-group.stochastic .split-chip {
+    border-style: dashed;
+    color: var(--text-3);
+}
+
+.split-none {
+    font-size: 10.5px;
+    color: var(--text-3);
+}
+
+/* The verdict. Not a badge: the whole point is that it is a sentence a reader
+   can act on, so it gets the width to be one. */
+.decision-confidence {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm, 6px);
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface-3) 55%, transparent);
+}
+
+.decision-confidence.warn {
+    border-color: color-mix(in srgb, var(--warn) 45%, var(--border));
+    background: color-mix(in srgb, var(--warn) 9%, transparent);
+}
+
+.confidence-icon {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ok);
+    flex: 0 0 auto;
+}
+
+.decision-confidence.warn .confidence-icon {
+    color: var(--warn);
+}
+
+.confidence-text {
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-2);
+}
+
+.confidence-text strong {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--text-1);
+}
+
+/* An unresolved winner must not be styled like a resolved one. */
+.decision-hero.unresolved .decision-hero-label {
+    color: var(--warn);
+}
+
+.decision-hero.unresolved .decision-hero-value {
+    font-size: 16px;
 }
 
 /* Standing disclosure, not decoration — the whole design rests on it. */

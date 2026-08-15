@@ -81,6 +81,28 @@ export interface DecisionResult {
   posterior_distributions?: PosteriorSummaries;
 }
 
+/** Per-Gemini-call token split. Absent on the nodes that spend none. */
+export interface NodeUsage {
+  prompt_tokens?: number | null;
+  completion_tokens?: number | null;
+  total_tokens?: number | null;
+}
+
+/**
+ * One LangGraph node execution, as timed by the proxy.
+ *
+ * `duration_ms` is the gap between this node's chunk and the previous one, so
+ * it includes transport — the agent's own structured logs carry the measured
+ * figure. Close enough to find the slow node, not close enough to quote.
+ */
+export interface NodeRun {
+  node: string;
+  stage: string | null;
+  duration_ms: number;
+  at_ms: number;
+  usage?: NodeUsage;
+}
+
 /** The terminal `done` frame: everything needed to render a finished turn. */
 export interface Report {
   status: string;
@@ -95,6 +117,8 @@ export interface Report {
   causal_decision: DecisionResult | null;
   /** Only populated by a posterior_summary query. */
   causal_posteriors: PosteriorSummaries | null;
+  /** Every node the graph ran, in order. Absent on mock and older turns. */
+  causal_node_trace?: NodeRun[];
 }
 
 export interface ChatMessage {

@@ -1044,6 +1044,15 @@ async def _agent_stream(req: "PromptRequest", user: Optional[dict],
     """Forward the Agent Engine run as SSE, then emit the assembled report."""
     collected_text = []
     causal_state = {}
+    # One entry per node the graph ran, in order. Derived here rather than sent
+    # by the agent: a chunk arrives when its node finishes, so the gap between
+    # consecutive arrivals is that node's execution time. That keeps the agent's
+    # node returns untouched — the graph reports no timing of its own — at the
+    # cost of including transport in the measurement, which is why the UI labels
+    # these as measured at the proxy. The authoritative per-node duration is the
+    # `duration_ms` in the agent's own structured logs.
+    node_runs: list = []
+    last_boundary = started
     # Summed across the turn's LLM calls by _merge_usage; the three counts below
     # are derived from it after every chunk so a stream that dies mid-run still
     # bills for what it burned.
@@ -1083,6 +1092,11 @@ async def _agent_stream(req: "PromptRequest", user: Optional[dict],
                         "detail": f"Agent Engine error: {body.decode()}"})
                     return
 
+                # Start the per-node clock here rather than at `started`:
+                # everything before this point is ADC, DNS and TLS, and charging
+                # it to the first node overstated interpret_query by ~600ms.
+                last_boundary = time.monotonic()
+
                 queue: asyncio.Queue = asyncio.Queue()
                 pump = asyncio.create_task(_pump_lines(resp, queue))
                 try:
@@ -1120,11 +1134,34 @@ async def _agent_stream(req: "PromptRequest", user: Optional[dict],
                         graph_payload = None
                         stage = None
                         new_steps: list = []
+                        new_runs: list = []
 
                         for node, delta in _iter_node_deltas(event):
                             resolved = _resolve_stage(node)
                             if resolved:
                                 stage = resolved
+
+                            now = time.monotonic()
+                            run = {
+                                "node": node,
+                                "stage": resolved,
+                                "duration_ms": int((now - last_boundary) * 1000),
+                                "at_ms": int((now - started) * 1000),
+                            }
+                            # Per-call usage, not the running total: under
+                            # stream_mode="updates" a chunk carries only what
+                            # its own node spent, which is exactly the split the
+                            # summed figure loses.
+                            spent = delta.get("causal_usage")
+                            if isinstance(spent, dict) and spent:
+                                run["usage"] = {
+                                    "prompt_tokens": spent.get("input_tokens"),
+                                    "completion_tokens": spent.get("output_tokens"),
+                                    "total_tokens": spent.get("total_tokens"),
+                                }
+                            node_runs.append(run)
+                            new_runs.append(run)
+                            last_boundary = now
 
                             for key, state_value in delta.items():
                                 if not key.startswith(CAUSAL_STATE_PREFIX):
@@ -1162,6 +1199,7 @@ async def _agent_stream(req: "PromptRequest", user: Optional[dict],
                                 "stage": stage or last_stage,
                                 "phase": phase,
                                 "steps": new_steps,
+                                "nodes": new_runs,
                                 "current_step": None,
                                 "elapsed_ms": int((time.monotonic() - started) * 1000),
                             })
@@ -1208,6 +1246,10 @@ async def _agent_stream(req: "PromptRequest", user: Optional[dict],
             "causal_status": causal_state.get("causal_status"),
             "causal_decision": causal_state.get("causal_decision"),
             "causal_posteriors": causal_state.get("causal_posteriors"),
+            # Prefixed, so _causal_payload carries it into Firestore with
+            # everything else and a replayed turn shows the same node trace as
+            # a live one.
+            "causal_node_trace": node_runs,
         }
         # _causal_payload filters on the causal_ prefix, so the new keys
         # persist to Firestore and replay through history without extra work.

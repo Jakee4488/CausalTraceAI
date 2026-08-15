@@ -5,7 +5,7 @@ import { CausalGraph } from "./CausalGraph";
 import { DecisionCard } from "./DecisionCard";
 import { WorkflowTimeline } from "./WorkflowTimeline";
 import { downloadRun } from "../../lib/export";
-import type { Stage } from "../../lib/stages";
+import { stagesFromNodeTrace, type Stage } from "../../lib/stages";
 import type { Report, CausalGraph as CausalGraphType } from "../../types";
 
 const STEP_TAG_RE = /^\[([a-z_ -]+)\]\s*(.*)$/i;
@@ -41,6 +41,7 @@ export function CausalPanel({ report, stages, liveGraph, onClose }: Props) {
   // Mid-run App passes a placeholder report and drives the panel from
   // liveGraph, so there is nothing worth serialising yet.
   const finished = !!report.response;
+  const timeline = stages ?? stagesFromNodeTrace(report.causal_node_trace);
   const [highlighted, setHighlighted] = useState<string | null>(null);
   // The node drill-down drawer went with the change ledger it read from: this
   // pipeline has no per-step record to drill into. Clicking a node still
@@ -101,9 +102,11 @@ export function CausalPanel({ report, stages, liveGraph, onClose }: Props) {
       )}
 
       <div className="causal-panel-scroll">
-        {stages && (
+        {/* A replayed turn has no live stages, but its node trace persisted —
+            so history gets the same timeline instead of an empty slot. */}
+        {timeline && (
           <div className="pane-timeline">
-            <WorkflowTimeline stages={stages} />
+            <WorkflowTimeline stages={timeline} />
           </div>
         )}
 
@@ -116,6 +119,7 @@ export function CausalPanel({ report, stages, liveGraph, onClose }: Props) {
         <DecisionCard
           decision={report.causal_decision}
           posteriors={report.causal_posteriors}
+          graph={graph}
         />
 
         {steps.length > 0 && (

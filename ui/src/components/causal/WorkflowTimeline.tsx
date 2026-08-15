@@ -1,5 +1,44 @@
 import { memo, useEffect, useRef, useState } from "react";
-import type { Stage } from "../../lib/stages";
+import { stageDurationMs, type Stage } from "../../lib/stages";
+import type { NodeRun } from "../../types";
+
+function fmtMs(ms: number): string {
+  return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`;
+}
+
+/**
+ * One graph node's execution, when a stage ran more than one.
+ *
+ * A stage that ran exactly one node needs no row of its own: the head already
+ * carries that node's name, duration and spend, and repeating them produced two
+ * near-identical lines per stage. This is for the case where the split actually
+ * has something to split — several nodes under one stage.
+ */
+const NodeRow = memo(function NodeRow({ run, share }: { run: NodeRun; share: number }) {
+  const tokens = run.usage?.total_tokens;
+  return (
+    <li className="node-row">
+      <span className="node-name">{run.node}</span>
+      {/* Width is the node's share of the stage, so the bar reads as "where the
+          time went" without needing a second axis. */}
+      <span className="node-bar" aria-hidden="true">
+        <span className="node-bar-fill" style={{ width: `${Math.max(share * 100, 2)}%` }} />
+      </span>
+      {tokens != null && (
+        <span
+          className="node-tokens"
+          title={
+            `${run.usage?.prompt_tokens ?? "?"} prompt + ` +
+            `${run.usage?.completion_tokens ?? "?"} completion`
+          }
+        >
+          {tokens.toLocaleString()} tok
+        </span>
+      )}
+      <span className="node-time">{fmtMs(run.duration_ms)}</span>
+    </li>
+  );
+});
 
 /**
  * Live elapsed counter.
@@ -8,10 +47,12 @@ import type { Stage } from "../../lib/stages";
  * the timeline tree, and throttled to ~10fps because a per-frame text update
  * is pure layout cost nobody can read.
  */
-function Elapsed({ startedMs, endedMs, running }: {
+function Elapsed({ startedMs, endedMs, running, overrideMs }: {
   startedMs: number | null;
   endedMs: number | null;
   running: boolean;
+  /** Measured duration, when the proxy reported per-node timings. */
+  overrideMs?: number | null;
 }) {
   const [now, setNow] = useState(() => performance.now());
   const base = useRef(performance.now());
@@ -33,12 +74,13 @@ function Elapsed({ startedMs, endedMs, running }: {
   }, [running]);
 
   let ms: number;
-  if (running) ms = now - base.current;
+  if (overrideMs != null) ms = overrideMs;
+  else if (running) ms = now - base.current;
   else if (startedMs != null && endedMs != null) ms = endedMs - startedMs;
   else return null;
 
   if (ms < 0) ms = 0;
-  return <span className="stage-time">{ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(1)}s`}</span>;
+  return <span className="stage-time">{fmtMs(ms)}</span>;
 }
 
 const StageRow = memo(function StageRow({
@@ -51,7 +93,19 @@ const StageRow = memo(function StageRow({
   onToggle: (id: string) => void;
 }) {
   const running = stage.status === "active";
-  const expandable = stage.steps.length > 0;
+  const expandable = stage.steps.length > 0 || stage.nodes.length > 1;
+  // Prefer the measured sum over frame-arrival arithmetic once the stage is
+  // done; while it is running the live counter is still the honest number.
+  const measured = running ? null : stageDurationMs(stage);
+  const stageTotal = stage.nodes.reduce((sum, run) => sum + (run.duration_ms || 0), 0);
+  // Surfaced on the head rather than only inside the expansion: the per-call
+  // split is the one fact here that no other row duplicates, and the summed
+  // badge in the header cannot show it.
+  const stageTokens = stage.nodes.reduce(
+    (sum, run) => sum + (run.usage?.total_tokens ?? 0),
+    0,
+  );
+  const soleNode = stage.nodes.length === 1 ? stage.nodes[0] : null;
 
   return (
     <li className={"stage-row " + stage.status} data-stage={stage.id}>
@@ -69,28 +123,71 @@ const StageRow = memo(function StageRow({
           >
             <span className="stage-caret" aria-hidden="true">{expanded ? "▾" : "▸"}</span>
             <span className="stage-label">{stage.label}</span>
+            {/* The exact node id, which is also the string to grep for in the
+                agent's logs — and for the compute stage, the only place the UI
+                says which of the three routes actually ran. */}
+            {soleNode && <span className="stage-node">{soleNode.node}</span>}
             {stage.current && (
               <span className="stage-counter">{`step ${stage.current.index} of ${stage.current.total}`}</span>
             )}
-            <Elapsed startedMs={stage.startedMs} endedMs={stage.endedMs} running={running} />
+            {stageTokens > 0 && (
+              <span className="stage-tokens" title="Tokens this stage's Gemini call spent">
+                {stageTokens.toLocaleString()} tok
+              </span>
+            )}
+            <Elapsed
+              startedMs={stage.startedMs}
+              endedMs={stage.endedMs}
+              running={running}
+              overrideMs={measured}
+            />
           </button>
         ) : (
           <div className="stage-head static">
             <span className="stage-caret" aria-hidden="true" />
             <span className="stage-label">{stage.label}</span>
+            {/* The exact node id, which is also the string to grep for in the
+                agent's logs — and for the compute stage, the only place the UI
+                says which of the three routes actually ran. */}
+            {soleNode && <span className="stage-node">{soleNode.node}</span>}
             {stage.current && (
               <span className="stage-counter">{`step ${stage.current.index} of ${stage.current.total}`}</span>
             )}
-            <Elapsed startedMs={stage.startedMs} endedMs={stage.endedMs} running={running} />
+            {stageTokens > 0 && (
+              <span className="stage-tokens" title="Tokens this stage's Gemini call spent">
+                {stageTokens.toLocaleString()} tok
+              </span>
+            )}
+            <Elapsed
+              startedMs={stage.startedMs}
+              endedMs={stage.endedMs}
+              running={running}
+              overrideMs={measured}
+            />
           </div>
         )}
 
         {expanded && expandable && (
-          <ul className="stage-steps">
-            {stage.steps.map((step, i) => (
-              <li key={i}>{step}</li>
-            ))}
-          </ul>
+          <>
+            {stage.nodes.length > 1 && (
+              <ul className="stage-nodes">
+                {stage.nodes.map((run) => (
+                  <NodeRow
+                    key={`${run.node}-${run.at_ms}`}
+                    run={run}
+                    share={stageTotal > 0 ? (run.duration_ms || 0) / stageTotal : 0}
+                  />
+                ))}
+              </ul>
+            )}
+            {stage.steps.length > 0 && (
+              <ul className="stage-steps">
+                {stage.steps.map((step, i) => (
+                  <li key={i}>{step}</li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
     </li>
@@ -114,9 +211,17 @@ interface Props {
  */
 export function WorkflowTimeline({ stages, compact = false }: Props) {
   const visible = compact ? stages.filter((s) => s.status !== "skipped") : stages;
-  const [expanded, setExpanded] = useState<string | null>(null);
+  // A set, not a single id: this became an execution record rather than a
+  // disclosure widget, and an accordion made "read the whole trace" a
+  // four-click exercise where three of the clicks close what you just opened.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
 
-  const toggle = (id: string) => setExpanded((prev) => (prev === id ? null : id));
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
 
   return (
     <div className="workflow-timeline" role="status" aria-label="Causal pipeline progress">
@@ -125,7 +230,7 @@ export function WorkflowTimeline({ stages, compact = false }: Props) {
           <StageRow
             key={stage.id}
             stage={stage}
-            expanded={expanded === stage.id}
+            expanded={expanded.has(stage.id)}
             onToggle={toggle}
           />
         ))}

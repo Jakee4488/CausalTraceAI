@@ -16,9 +16,11 @@
 
 import { Fragment } from "react";
 
+import { causeSplit, decisionVerdict, renderEstimand } from "../../lib/decision";
 import { fmtNum } from "../../lib/markdown";
 import type {
   ActionEvaluation,
+  CausalGraph,
   DecisionResult,
   PosteriorSummaries,
 } from "../../types";
@@ -102,18 +104,57 @@ function PolicyView({ result }: { result: DecisionResult }) {
   const rows = result.action_evaluations || [];
   const pct = makeScale(actionScaleValues(rows));
   const probabilities = result.probability_each_action_is_best || {};
+  const verdict = decisionVerdict(rows);
+
+  // A margin inside sampling error is not a recommendation, so the hero stops
+  // presenting it as one. Everything below is unchanged — the reader still gets
+  // the full table and can see for themselves how close it was.
+  const tooClose = verdict != null && !verdict.separated;
 
   return (
     <>
-      <div className="decision-hero">
-        <span className="decision-hero-label">recommended</span>
+      <div className={"decision-hero" + (tooClose ? " unresolved" : "")}>
+        <span className="decision-hero-label">
+          {tooClose ? "too close to call" : "recommended"}
+        </span>
         <span className="decision-hero-value">
-          {result.optimal_decision_description ?? String(result.optimal_decision)}
+          {tooClose && verdict
+            ? `${verdict.best.decision_description} or ${verdict.runnerUp.decision_description}`
+            : result.optimal_decision_description ?? String(result.optimal_decision)}
         </span>
         <span className="decision-hero-utility">
           expected utility {fmtNum(result.optimal_expected_utility)}
         </span>
       </div>
+
+      {verdict && (
+        <div className={"decision-confidence " + (tooClose ? "warn" : "ok")}>
+          <span className="confidence-icon" aria-hidden="true">
+            {tooClose ? "≈" : "✓"}
+          </span>
+          <span className="confidence-text">
+            {/* Four digits, not three: a margin this close to zero rounds to
+                "0.01" at the card's default precision, which reads as a real
+                gap rather than the near-tie it is. */}
+            {tooClose ? (
+              <>
+                <strong>{fmtNum(verdict.margin, 4)}</strong> ahead of{" "}
+                {verdict.runnerUp.decision_description}, against ±
+                {fmtNum(verdict.threshold, 4)} of Monte Carlo error — the gap is
+                inside the noise, so this ranking would not survive a different
+                seed.
+              </>
+            ) : (
+              <>
+                <strong>{fmtNum(verdict.margin, 4)}</strong> clear of{" "}
+                {verdict.runnerUp.decision_description}, against ±
+                {fmtNum(verdict.threshold, 4)} of Monte Carlo error — the ranking
+                is real, not a sampling artefact.
+              </>
+            )}
+          </span>
+        </div>
+      )}
 
       <div className="decision-chart">
         <div className="decision-caption">
@@ -161,6 +202,16 @@ function InterventionView({ result }: { result: DecisionResult }) {
     },
   ];
 
+  // Did the intervention change what you should *do*, or only what you earn?
+  // Two different findings, and the arm rows below state each arm's choice
+  // without ever comparing them.
+  const flipped =
+    reoptimised &&
+    result.target_optimal_decision_description != null &&
+    result.baseline_optimal_decision_description != null &&
+    result.target_optimal_decision_description !==
+      result.baseline_optimal_decision_description;
+
   return (
     <>
       <div className="decision-hero">
@@ -177,6 +228,17 @@ function InterventionView({ result }: { result: DecisionResult }) {
             : `policy held at ${result.fixed_decision_description ?? result.fixed_decision}`}
         </span>
       </div>
+
+      {reoptimised && (
+        <div className={"decision-confidence " + (flipped ? "warn" : "ok")}>
+          <span className="confidence-icon" aria-hidden="true">{flipped ? "⤳" : "="}</span>
+          <span className="confidence-text">
+            {flipped
+              ? "The intervention changes which policy is best, not just its payoff."
+              : "The best policy is the same under both conditions — the intervention moves the payoff, not the choice."}
+          </span>
+        </div>
+      )}
 
       <div className="decision-chart">
         <div className="decision-caption">
@@ -254,10 +316,15 @@ function PosteriorView({ posteriors }: { posteriors: PosteriorSummaries }) {
 interface Props {
   decision: DecisionResult | null;
   posteriors: PosteriorSummaries | null;
+  /** Supplies the full cause list, which lives only on the graph payload. */
+  graph?: CausalGraph | null;
 }
 
-export function DecisionCard({ decision, posteriors }: Props) {
+export function DecisionCard({ decision, posteriors, graph }: Props) {
   if (!decision) return null;
+
+  const estimand = renderEstimand(decision);
+  const split = causeSplit(graph);
 
   return (
     <section className="decision-card">
@@ -267,6 +334,47 @@ export function DecisionCard({ decision, posteriors }: Props) {
           {String(decision.query_type ?? "").replace(/_/g, " ")}
         </span>
       </header>
+
+      {/* What was computed, before what came out of it. The narrated answer
+          restates the result; nothing restates the question the engine was
+          actually given, and for interventions that is where the meaning is. */}
+      {estimand && (
+        <div className="decision-estimand">
+          <span className="estimand-label">estimand</span>
+          <code className="estimand-formula">{estimand}</code>
+        </div>
+      )}
+
+      {split && (
+        <div className="decision-split">
+          {split.intervened.length > 0 && (
+            <span className="split-group intervened">
+              <span className="split-label">forced</span>
+              {split.intervened.map((name) => (
+                <span className="split-chip" key={name}>{name.replace(/_/g, " ")}</span>
+              ))}
+            </span>
+          )}
+          {split.observed.length > 0 && (
+            <span className="split-group observed">
+              <span className="split-label">observed</span>
+              {split.observed.map((name) => (
+                <span className="split-chip" key={name}>{name.replace(/_/g, " ")}</span>
+              ))}
+            </span>
+          )}
+          <span className="split-group stochastic">
+            <span className="split-label">integrated over</span>
+            {split.stochastic.length ? (
+              split.stochastic.map((name) => (
+                <span className="split-chip" key={name}>{name.replace(/_/g, " ")}</span>
+              ))
+            ) : (
+              <span className="split-none">nothing — every cause was pinned</span>
+            )}
+          </span>
+        </div>
+      )}
 
       {decision.query_type === "optimal_policy" && <PolicyView result={decision} />}
       {decision.query_type === "intervention_effect" && <InterventionView result={decision} />}
