@@ -884,6 +884,13 @@ async def analyze_prompt(
     # Re-enable before any real deploy: access.require_access(user)
 
     agent_engine_base = os.getenv("AGENT_ENGINE_ENDPOINT")
+    if agent_engine_base and not agent_engine_base.startswith("http"):
+        parts = agent_engine_base.split("/")
+        if "locations" in parts:
+            region = parts[parts.index("locations") + 1]
+            agent_engine_base = f"https://{region}-aiplatform.googleapis.com/v1beta1/{agent_engine_base}"
+        if not agent_engine_base.endswith(":query"):
+            agent_engine_base += ":query"
     started = time.monotonic()
     attachment_files = _resolve_attachments(req.attachments, user)
     attachment_names = [f["filename"] for f in attachment_files]
